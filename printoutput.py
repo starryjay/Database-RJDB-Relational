@@ -4,7 +4,7 @@ import os
 def return_table(user_query_list, tablename, chunkno=None, rownum=None):
     user_query_list = list(map(str.upper, user_query_list))
     # parse whole user_query_list 
-    chunk_path = "./chunks"
+    chunk_path = "./" + tablename + "_chunks"
     col_agg = "/col_agg"                          # directly under chunks
     agg = "/agg"                                  # directly under chunks
     bunch_agg_chunks = "/bunch_agg_chunks"        # directly under chunks
@@ -14,24 +14,24 @@ def return_table(user_query_list, tablename, chunkno=None, rownum=None):
     has_chunks = "/has_chunks"                    # could be under any of above
     if "MAKE" in user_query_list:
         tbl = pd.read_pickle("./table/" + tablename + ".pkl")
-        print(tbl.head())
+        return (tbl.head())
     elif "EDIT" in user_query_list:
         if "INSERT" in user_query_list and "FILE" not in user_query_list:
             tbl = pd.read_csv(tablename + "_chunk" + chunkno + ".csv")
-            print(tbl.tail())
+            return (tbl.tail())
         elif "INSERT FILE" in user_query_list:
             tbl = pd.read_pickle(user_query_list[0] + ".pkl")
-            print(tbl.head())
+            return (tbl.head())
         elif "UPDATE" in user_query_list:
             tbl = pd.read_csv(tablename + "_chunk" + chunkno + ".csv")
             start = rownum - 2
             end = rownum + 3
-            print(tbl.iloc[start:end])
+            return (tbl.iloc[start:end])
         elif "DELETE" in user_query_list:
             tbl = pd.read_csv(tablename + "_chunk" + chunkno + ".csv")
             start = rownum - 2
             end = rownum + 3
-            print(tbl.iloc[start:end])
+            return (tbl.iloc[start:end])
     elif "FETCH" in user_query_list:
         filepath = chunk_path
         agglist = ["TOTALNUM", "SUM", "MEAN", "MIN", "MAX"]
@@ -70,5 +70,6 @@ def return_table(user_query_list, tablename, chunkno=None, rownum=None):
             filepath += has_chunks
         df = pd.DataFrame()
         for chunk in os.listdir(filepath):
-            df = pd.concat([df, chunk])
-        print(df)
+            s = pd.read_csv(filepath + "/" + chunk, index_col=0)
+            df = pd.concat([df, s])
+        return df

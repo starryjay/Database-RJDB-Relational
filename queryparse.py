@@ -5,8 +5,6 @@ from drop_tbl import drop
 import os
 
 def parse_query(user_input_string, current_db):
-    if os.path.split(os.getcwd())[1] != current_db:
-        os.chdir("../" + current_db)
     user_input_list = user_input_string.replace(',', '').split()
     first_keyword = user_input_list[0] 
     if first_keyword.upper() == "MAKE": 

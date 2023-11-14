@@ -9,7 +9,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 # BUNCH, columns, SORT, columns, ASC/DESC, MERGE, tablename2, HAS, conditions]
 
 def fetch(user_query_list):
-    table = pd.read_pickle(user_query_list[0] + ".pkl")
+    table = pd.read_pickle("./table/" + user_query_list[0] + ".pkl")
     agglist = ["TOTALNUM", "SUM", "MEAN", "MIN", "MAX"]
     if "BUNCH" in user_query_list and (not set(agglist).isdisjoint(set(list(map(str.upper, user_query_list))))):
         table = bunch_agg(user_query_list, table)
@@ -24,7 +24,8 @@ def fetch(user_query_list):
         table = merge(user_query_list, table, mergetbl)
     if "HAS" in user_query_list:
         table = has(user_query_list)
-    return return_table(user_query_list)
+    user_query_list.insert(0, "FETCH")
+    print(return_table(user_query_list, user_query_list[1]))
 
 def get_columns(user_query_list):
     kwlist = ["TOTALNUM", "SUM", "MEAN", "MIN", "MAX", "BUNCH", "SORT", "MERGE", "HAS"]

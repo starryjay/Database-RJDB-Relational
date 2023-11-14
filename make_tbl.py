@@ -31,20 +31,23 @@ def make(user_query_list):
         dtype_dict = {"int": 'int64', "str": 'string', "float": 'float64', "datetime64": 'datetime64[ns]'}
         tbl = pd.DataFrame(columns=colnames)
         for colname, datatype in zip(colnames, dtypes):
-            tbl[colname] = tbl[colname].astype(datatype)
+            tbl[colname] = tbl[colname].astype(dtype_dict[datatype])
         tbl.reset_index(drop = True, inplace = True)
         tbl.name = tablename
         if not os.path.exists("./table"):
             os.mkdir("./table")
         tbl.to_pickle("./table/" + tbl.name + '.pkl')
         return return_table(user_query_list, tablename)
+    else:
+        print("Please use keyword COPY or COLUMNS!")
+        return
 def make_copy(user_query_list):
     existingtable = user_query_list[0]
     copytable = user_query_list[1]
     if copytable in os.listdir(os.getcwd()):
         print("Table with name", copytable, "already exists! Please use a different name.")
         return
-    curr_table = pd.read_pickle(existingtable + '.pkl')
+    curr_table = pd.read_pickle("./table/" + existingtable + '.pkl')
     copy = curr_table.copy(deep=False)
     copy.to_pickle("./table/" + copytable + '.pkl')
     return return_table(user_query_list, copytable)

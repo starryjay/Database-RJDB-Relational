@@ -14,24 +14,24 @@ def return_table(user_query_list, tablename, chunkno=None, rownum=None):
     has_chunks = "/has_chunks"                    # could be under any of above
     if "MAKE" in user_query_list:
         tbl = pd.read_pickle("./table/" + tablename + ".pkl")
-        return tbl.head()
+        print(tbl.head())
     elif "EDIT" in user_query_list:
         if "INSERT" in user_query_list and "FILE" not in user_query_list:
             tbl = pd.read_csv(tablename + "_chunk" + chunkno + ".csv")
-            return tbl.tail()
+            print(tbl.tail())
         elif "INSERT FILE" in user_query_list:
             tbl = pd.read_pickle(user_query_list[0] + ".pkl")
-            return tbl.head()
+            print(tbl.head())
         elif "UPDATE" in user_query_list:
             tbl = pd.read_csv(tablename + "_chunk" + chunkno + ".csv")
             start = rownum - 2
             end = rownum + 3
-            return tbl.iloc[start:end]
+            print(tbl.iloc[start:end])
         elif "DELETE" in user_query_list:
             tbl = pd.read_csv(tablename + "_chunk" + chunkno + ".csv")
             start = rownum - 2
             end = rownum + 3
-            return tbl.iloc[start:end]
+            print(tbl.iloc[start:end])
     elif "FETCH" in user_query_list:
         filepath = chunk_path
         agglist = ["TOTALNUM", "SUM", "MEAN", "MIN", "MAX"]
@@ -71,4 +71,4 @@ def return_table(user_query_list, tablename, chunkno=None, rownum=None):
         df = pd.DataFrame()
         for chunk in os.listdir(filepath):
             df = pd.concat([df, chunk])
-        return df
+        print(df)

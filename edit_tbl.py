@@ -30,7 +30,8 @@ def insert(user_query_list):
     colnames = list(schema.columns)
     global dtypes
     dtypes = list(schema.dtypes)
-    record = dict([tuple(data.split('=')) for data in user_query_list[2:]])
+    record = pd.DataFrame(list(dict([tuple(data.split('=')) for data in user_query_list[2:]]).values())).T
+    record.columns = colnames
     chunk_path = "./" + user_query_list[0] + "_chunks"
     if os.path.exists(chunk_path):
         if os.listdir(chunk_path):
@@ -43,26 +44,32 @@ def insert(user_query_list):
                 chunkno = int(chunkno)
                 chunknolist.append(chunkno)
             last = user_query_list[0] + "_chunk" + str(max(chunknolist)) + ".csv"
-            table = pd.read_csv(chunk_path+"/"+last, skiprows=1)
+            table = pd.read_csv(chunk_path+"/"+last, index_col=0)
+            table.columns = colnames
             if len(table) < 10000:
-                table.loc[len(table)] = record
+                table = pd.concat(objs=[table, record], axis=0, ignore_index=True)
                 for colname, datatype in zip(colnames, dtypes):
                     table[colname] = table[colname].astype(datatype)
-                print("Inserted into existing chunk number (chunk", last, ".csv): ", record)
+                table.to_csv(chunk_path + "/" + last)
+                table.to_pickle("./table/" + user_query_list[0] + ".pkl")
+                print("Inserted into existing chunk number (", last, "): \n", record)
                 return return_table(user_query_list, user_query_list[0], last)
             else:
-                table = pd.DataFrame(record)
+                table = record
+                table.columns = colnames
                 new = user_query_list[0] + "_chunk" + str(max(chunknolist) + 1) + ".csv"
                 table.to_csv(chunk_path+"/"+new)
+                table.to_pickle("./table/" + user_query_list[0] + ".pkl")
                 print("Inserted into new chunk (", new, "): ", record)
                 return return_table(user_query_list, user_query_list[0], new)
     else: 
         os.mkdir(chunk_path)
-        table = pd.DataFrame([record])
-        table.head()
+        table = record
+        table.columns = colnames
         new = user_query_list[0] + "_chunk" + str(1) + ".csv"
         table.to_csv(chunk_path+"/"+new)
-        print("No chunks exist. Inserted into new chunk (", new, "): ", record)
+        table.to_pickle("./table/" + user_query_list[0] + ".pkl")
+        print("No chunks exist. Inserted into new chunk (", new, "): ", dict([tuple(data.split('=')) for data in user_query_list[2:]]))
         return return_table(user_query_list, user_query_list[0], new)
         
 def insert_file(user_query_list, current_db):
@@ -80,7 +87,7 @@ def insert_file(user_query_list, current_db):
         table = pd.read_csv(first_chunk)
     for colname, datatype in zip(colnames, dtypes):
         table[colname] = table[colname].astype(datatype)
-    table.to_pickle(user_query_list[0] + ".pkl")
+    table.to_pickle("./table/" + user_query_list[0] + ".pkl")
     print("Inserted file", df.name)
     return return_table(user_query_list, user_query_list[0])
 
@@ -97,7 +104,7 @@ def update(user_query_list):
     chunkno = (rownum // 10000) + 1
     chunk_path = "./" + user_query_list[0] + "_chunks/" + user_query_list[0] + "_chunk" + str(chunkno) + ".csv"
     if os.path.exists(chunk_path):
-        table = pd.read_csv(chunk_path)
+        table = pd.read_csv(chunk_path, index_col=0)
     else:
         table = pd.DataFrame()
     for colname, datatype in zip(colnames, dtypes):
@@ -110,28 +117,31 @@ def update(user_query_list):
         for j, k in zip(colnames, dtypes):
             if i == j:
                 table[i] = table[i].astype(k, copy = False)
-    table.to_pickle(user_query_list[0] + ".pkl")
+    table.to_pickle("./table/" + user_query_list[0] + ".pkl")
     table.to_csv(chunk_path)
     return return_table(user_query_list, user_query_list[0], chunkno, rownum)
 
 def delete(user_query_list):
-    schema = pd.read_pickle("./table/" + user_query_list[0] + ".pkl")
+    table = pd.read_pickle("./table/" + user_query_list[0] + ".pkl")
     global colnames
-    colnames = list(schema.columns)
+    colnames = list(table.columns)
     global dtypes
-    dtypes = list(schema.dtypes)
+    dtypes = list(table.dtypes)
     rownum = int(user_query_list[2][3:])
     if rownum >= 10000:
         chunkno = (rownum // 10000) + 1
-        chunk_path = "../" + user_query_list[0] + "_chunks/" + user_query_list[0] + "_chunk" + str(chunkno) + ".csv"
+        chunk_path = "./" + user_query_list[0] + "_chunks/" + user_query_list[0] + "_chunk" + str(chunkno) + ".csv"
         if os.path.exists(chunk_path):
             table = pd.read_csv(chunk_path)
         global dtype_dict
         for colname, datatype in zip(colnames, dtypes):
             table[colname] = table[colname].astype(datatype)
         rownum = (rownum % 10000) + 1
+    else:
+        chunkno = 1
+        chunk_path = "./" + user_query_list[0] + "_chunks/" + user_query_list[0] + "_chunk" + str(chunkno) + ".csv"
     table.drop(rownum, axis='index', inplace=True)
     if int(user_query_list[2][3:]) < 10000:
-        table.to_pickle(user_query_list[0] + ".pkl")
+        table.to_pickle("./table/" + user_query_list[0] + ".pkl")
     table.to_csv(chunk_path)
     return return_table(user_query_list, user_query_list[0], chunkno, rownum)

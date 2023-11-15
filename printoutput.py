@@ -1,7 +1,7 @@
 import pandas as pd
 import os
 
-def return_table(user_query_list, tablename, chunkno=None, rownum=None):
+def return_table(user_query_list, tablename, chunkno=None, rownum=None, agg_function = None):
     user_query_list = list(map(str.upper, user_query_list))
     # parse whole user_query_list 
     chunk_path = "./" + tablename + "_chunks"
@@ -49,9 +49,23 @@ def return_table(user_query_list, tablename, chunkno=None, rownum=None):
         if "HAS" in user_query_list:
             filepath += has_chunks
         df = pd.DataFrame()
-        print(filepath)
+        #print(filepath)
         for chunk in os.listdir(filepath):
-            print(filepath + "/" + chunk)
-            s = pd.read_pickle(filepath + "/" + chunk)
-            df = pd.concat([df, s])
+            #print(filepath + "/" + chunk)
+            if bunch_agg_chunks in filepath:
+                beg  = chunk.rfind("_") + 1
+                
+                end = chunk.rfind(".")
+             
+           
+
+                if chunk[beg:end].upper() == agg_function:
+                    
+                    s = pd.read_pickle(filepath + "/" + chunk)
+                    df = pd.concat([df, s])
+                    
+            else:
+                s = pd.read_pickle(filepath + "/" + chunk)
+                df = pd.concat([df, s])
+           
         return df

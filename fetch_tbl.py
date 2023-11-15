@@ -31,7 +31,13 @@ def fetch(user_query_list):
         table = has(user_query_list)
     user_query_list.insert(0, "FETCH")
     if (not set(agglist).isdisjoint(set(uqlupper))) or ("BUNCH" in uqlupper) or ("MERGE" in uqlupper) or ("SORT" in uqlupper) or ("HAS" in uqlupper):
-        print(return_table(user_query_list, user_query_list[1]))
+        if (not set(agglist).isdisjoint(set(uqlupper))) and ("BUNCH" in uqlupper):
+            agg_func = set(agglist).intersection(set(uqlupper)).pop()
+            print(return_table(user_query_list, user_query_list[1], agg_function= agg_func))
+            
+        
+        else: 
+            print(return_table(user_query_list, user_query_list[1]))
     else:
         print(table)
 
@@ -247,9 +253,10 @@ def bunch_agg(user_query_list, table):
                     sumdict = {group: pd.Series(table.loc[table[bunchcol] == group, sumcol].sum(), index=range(len(table[bunchcol])), name='sum') for group in groups}
                     for key in tbldict.keys():
                         tbldict[key].insert(len(tbldict[key].columns), 'sum_'+sumcol, sumdict[key])
-                    table = pd.concat([v for v in tbldict.values()])
+                    table = pd.concat([v for v in tbldict.values()], keys = [k for k in tbldict.keys()], names=[bunchcol, 'ROWID'])
                     print(table.head())
                 elif "TOTALNUM" in user_query_list:
+                    print("Table before doing TOTAL NUM",table)
                     agg_func = "totalnum"
                     totalcol = user_query_list[list(map(str.upper, user_query_list)).index("TOTALNUM") + 1]
                     if totalcol.upper() not in list(map(str.upper, cols_list)):
@@ -258,7 +265,7 @@ def bunch_agg(user_query_list, table):
                     totaldict = {group: pd.Series(len(table.loc[table[bunchcol] == group, totalcol]), index=range(len(table[bunchcol])), name='totalnum') for group in groups}
                     for key in tbldict.keys():
                         tbldict[key].insert(len(tbldict[key].columns), 'totalnum_'+totalcol, totaldict[key])
-                    table = pd.concat([v for v in tbldict.values()])
+                    table = pd.concat([v for v in tbldict.values()], keys = [k for k in tbldict.keys()], names=[bunchcol, 'ROWID'])
                     print(table.head())
                 elif "MEAN" in user_query_list:
                     agg_func = "mean"
@@ -269,7 +276,7 @@ def bunch_agg(user_query_list, table):
                     meandict = {group: pd.Series(table.loc[table[bunchcol] == group, meancol].mean(), index=range(len(table[bunchcol])), name='mean') for group in groups}
                     for key in tbldict.keys():
                         tbldict[key].insert(len(tbldict[key].columns), 'mean_'+meancol, meandict[key])
-                    table = pd.concat([v for v in tbldict.values()])
+                    table = pd.concat([v for v in tbldict.values()], keys = [k for k in tbldict.keys()], names=[bunchcol, 'ROWID'])
                     print(table.head())
                 elif "MIN" in user_query_list:
                     agg_func = "min"
@@ -280,7 +287,7 @@ def bunch_agg(user_query_list, table):
                     mindict = {group: pd.Series(table.loc[table[bunchcol] == group, mincol].min(), index=range(len(table[bunchcol])), name='min') for group in groups}
                     for key in tbldict.keys():
                         tbldict[key].insert(len(tbldict[key].columns), 'min_'+mincol, mindict[key])
-                    table = pd.concat([v for v in tbldict.values()])
+                    table = pd.concat([v for v in tbldict.values()], keys = [k for k in tbldict.keys()], names=[bunchcol, 'ROWID'])
                     print(table.head())
                 elif "MAX" in user_query_list:
                     agg_func = "max"
@@ -291,11 +298,13 @@ def bunch_agg(user_query_list, table):
                     maxdict = {group: pd.Series(table.loc[table[bunchcol] == group, maxcol].max(), index=range(len(table[bunchcol])), name='max') for group in groups}
                     for key in tbldict.keys():
                         tbldict[key].insert(len(tbldict[key].columns), 'max_'+maxcol, maxdict[key])
-                    table = pd.concat([v for v in tbldict.values()])
-                    print(table.head())
+                    table = pd.concat([v for v in tbldict.values()], keys = [k for k in tbldict.keys()], names=[bunchcol, 'ROWID'])
+                    #print(table.head())
+                print("Table dict", tbldict)
                 table.to_pickle(bunch_agg_chunk_path + "/" + chunk[:-4] + "bunch_" + agg_func + ".pkl")
         print("grouped successfully by", bunchcol, "; aggregate function is", agg_func)
-    return table
+        
+    return  table
 
 def bunch(user_query_list, table):
     bunchidx = list(map(str.upper, user_query_list)).index("BUNCH") + 1
@@ -304,6 +313,8 @@ def bunch(user_query_list, table):
         print("Chunks folder does not exist")
         return
     else:
+        if not os.path.exists("./" + user_query_list[0] + "_chunks/bunched_chunks"):
+            os.mkdir("./" + user_query_list[0] + "_chunks/bunched_chunks")
         bunched_chunk_path=os.path.join("./" + user_query_list[0] + "_chunks", "bunched_chunks")
     chunk_path = "./" + user_query_list[0] + "_chunks"
     cols_list = get_columns(user_query_list)
@@ -316,7 +327,8 @@ def bunch(user_query_list, table):
                 table = pd.read_csv(chunk_path + "/" + chunk).loc[:, cols_list]
                 groups = table[bunchcol].unique()
                 tbldict = {group: table[table[bunchcol] == group] for group in groups}
-                table = pd.concat([v for v in tbldict.values()])
+                
+                table = pd.concat([v for v in tbldict.values()], keys = [k for k in tbldict.keys()], names=[bunchcol, 'ROWID'])
                 table.to_pickle(bunched_chunk_path + "/" + chunk[:-4] + "_bunch.pkl")
         print("grouped successfully by", bunchcol)
     return table
@@ -342,157 +354,32 @@ def has(user_query_list):
     cond = user_query_list[condidx]
     agglist = ["TOTALNUM", "SUM", "MEAN", "MIN", "MAX"]
     if "MERGE" in uqlupper: 
-        table = pd.read_pickle("./" + user_query_list[0] + "_chunks/merged_tables/" + os.listdir("./" + user_query_list[0] + "_chunks/merged_tables")[0])
-        if "<" in cond:
-            cond = user_query_list[condidx].split("<")
-            col1 = cond[0]
-            cond2 = cond[1]
-            if col1 not in table.columns:
-                print("First item in comparison must be a column in the table")
-                return 
-            if cond2 not in table.columns:
-                type1 = type(table[col1].iloc[0])
-                type2 = type(cond2)
-                if type1 == type2: 
-                    table = table.loc[table[col1] < cond2]
-                else:   
-                    if (type1 == int and type2 == float) or (type1 == float and type2 == int):
-                        table = table.loc[table[col1] < cond2]
-                    else:
-                        print("Incompatible type comparison")
-                        return
-            else:
-                table = table.loc[table[col1] < table[cond2]]
-        elif ">" in cond:
-            cond = user_query_list[condidx].split(">")
-            col1 = cond[0]
-            cond2 = cond[1]
-            if col1 not in table.columns:
-                print("First item in comparison must be a column in the table")
-                return 
-            if cond2 not in table.columns:
-                type1 = type(table[col1].iloc[0])
-                type2 = type(cond2)
-                if type1 == type2: 
-                    table = table.loc[table[col1] > cond2]
-                else:   
-                    if (type1 == int and type2 == float) or (type1 == float and type2 == int):
-                        table = table.loc[table[col1] > cond2]
-                    else:
-                        print("Incompatible type comparison")
-                        return
-            else:
-                table = table.loc[table[col1] > table[cond2]]
-        elif "=" in cond:
-            cond = user_query_list[condidx].split("=")
-            col1 = cond[0]
-            cond2 = cond[1]
-            if col1 not in table.columns:
-                print("First item in comparison must be a column in the table")
-                return 
-            if cond2 not in table.columns:
-                type1 = type(table[col1].iloc[0])
-                type2 = type(cond2)
-                if type1 == type2: 
-                    table = table.loc[table[col1] == cond2]
-                else:   
-                    if (type1 == int and type2 == float) or (type1 == float and type2 == int):
-                        table = table.loc[table[col1] == cond2]
-                    else:
-                        print("Incompatible type comparison")
-                        return
-            else:
-                table = table.loc[table[col1] == table[cond2]]
-        if not os.path.exists("./" + user_query_list[0] + "_chunks/merged_tables/has_chunks"):
-            os.mkdir("./" + user_query_list[0] + "_chunks/merged_tables/has_chunks")
-        table.to_pickle("./" + user_query_list[0] + "_chunks/merged_tables/has_chunks/" + user_query_list[0] + "_has.pkl")
-    elif "SORT" in uqlupper:
-        table = pd.read_pickle("./" + user_query_list[0] + "_chunks/chunk_subsets/" + os.listdir("./" + user_query_list[0] + "_chunks/chunk_subsets")[0])
-        if "<" in cond:
-            cond = user_query_list[condidx].split("<")
-            col1 = cond[0]
-            cond2 = cond[1]
-            if col1 not in table.columns:
-                print("First item in comparison must be a column in the table")
-                return 
-            if cond2 not in table.columns:
-                type1 = type(table[col1].iloc[0])
-                type2 = type(cond2)
-                if type1 == type2: 
-                    table = table.loc[table[col1] < cond2]
-                else:   
-                    if (type1 == int and type2 == float) or (type1 == float and type2 == int):
-                        table = table.loc[table[col1] < cond2]
-                    else:
-                        print("Incompatible type comparison")
-                        return
-            else:
-                table = table.loc[table[col1] < table[cond2]]
-        elif ">" in cond:
-            cond = user_query_list[condidx].split(">")
-            col1 = cond[0]
-            cond2 = cond[1]
-            if col1 not in table.columns:
-                print("First item in comparison must be a column in the table")
-                return 
-            if cond2 not in table.columns:
-                type1 = type(table[col1].iloc[0])
-                type2 = type(cond2)
-                if type1 == type2: 
-                    table = table.loc[table[col1] > cond2]
-                else:   
-                    if (type1 == int and type2 == float) or (type1 == float and type2 == int):
-                        table = table.loc[table[col1] > cond2]
-                    else:
-                        print("Incompatible type comparison")
-                        return
-            else:
-                table = table.loc[table[col1] > table[cond2]]
-        elif "=" in cond:
-            cond = user_query_list[condidx].split("=")
-            col1 = cond[0]
-            cond2 = cond[1]
-            if col1 not in table.columns:
-                print("First item in comparison must be a column in the table")
-                return 
-            if cond2 not in table.columns:
-                type1 = type(table[col1].iloc[0])
-                type2 = type(cond2)
-                if type1 == type2: 
-                    table = table.loc[table[col1] == cond2]
-                else:   
-                    if (type1 == int and type2 == float) or (type1 == float and type2 == int):
-                        table = table.loc[table[col1] == cond2]
-                    else:
-                        print("Incompatible type comparison")
-                        return
-            else:
-                table = table.loc[table[col1] == table[cond2]]
-        if not os.path.exists("./" + user_query_list[0] + "_chunks/chunk_subsets/has_chunks"):
-            os.mkdir("./" + user_query_list[0] + "_chunks/chunk_subsets/has_chunks")
-        table.to_pickle("./" + user_query_list[0] + "_chunks/chunk_subsets/has_chunks/" + user_query_list[0] + "_has.pkl")
-    elif "BUNCH" in uqlupper:
-        if not set(agglist).isdisjoint(set(list(map(str.upper, user_query_list)))):
-            for chunk in os.listdir("./" + user_query_list[0] + "_chunks/bunch_agg_chunks"):
-                table = pd.read_pickle(chunk)
+       # table = pd.read_pickle("./" + user_query_list[0] + "_chunks/merged_tables/" + os.listdir("./" + user_query_list[0] + "_chunks/merged_tables")[0])
+       
+       for chunk in os.listdir("./" + user_query_list[0] + "_chunks/merged_tables"):
+            if os.path.isfile("./" + user_query_list[0] + "_chunks/merged_tables/" + chunk):
+                table = pd.read_csv("./" + user_query_list[0] + "_chunks/merged_tables/" + chunk).loc[:, get_columns(user_query_list)]
                 if "<" in cond:
                     cond = user_query_list[condidx].split("<")
                     col1 = cond[0]
                     cond2 = cond[1]
                     if col1 not in table.columns:
-                        print("First item in comparison must be a column in the table")
                         return 
                     if cond2 not in table.columns:
                         type1 = type(table[col1].iloc[0])
+                        if '.' in cond2:
+                            cond2 = float(cond2)
+                        elif cond2.isdigit():
+                            cond2 = int(cond2)
                         type2 = type(cond2)
                         if type1 == type2: 
                             table = table.loc[table[col1] < cond2]
                         else:   
-                            if (type1 == int and type2 == float) or (type1 == float and type2 == int):
-                                table = table.loc[table[col1] < cond2]
-                            else:
+                            if isinstance(type1, str) or isinstance(type2, str) or isinstance(type1, pd.DatetimeIndex) or isinstance(type2, pd.DatetimeIndex):
                                 print("Incompatible type comparison")
                                 return
+                            else:
+                                table = table.loc[table[col1] < cond2]
                     else:
                         table = table.loc[table[col1] < table[cond2]]
                 elif ">" in cond:
@@ -500,19 +387,22 @@ def has(user_query_list):
                     col1 = cond[0]
                     cond2 = cond[1]
                     if col1 not in table.columns:
-                        print("First item in comparison must be a column in the table")
                         return 
                     if cond2 not in table.columns:
                         type1 = type(table[col1].iloc[0])
+                        if '.' in cond2:
+                            cond2 = float(cond2)
+                        elif cond2.isdigit():
+                            cond2 = int(cond2)
                         type2 = type(cond2)
                         if type1 == type2: 
                             table = table.loc[table[col1] > cond2]
                         else:   
-                            if (type1 == int and type2 == float) or (type1 == float and type2 == int):
-                                table = table.loc[table[col1] > cond2]
-                            else:
+                            if isinstance(type1, str) or isinstance(type2, str) or isinstance(type1, pd.DatetimeIndex) or isinstance(type2, pd.DatetimeIndex):
                                 print("Incompatible type comparison")
                                 return
+                            else:
+                                table = table.loc[table[col1] > cond2]
                     else:
                         table = table.loc[table[col1] > table[cond2]]
                 elif "=" in cond:
@@ -520,223 +410,451 @@ def has(user_query_list):
                     col1 = cond[0]
                     cond2 = cond[1]
                     if col1 not in table.columns:
-                        print("First item in comparison must be a column in the table")
                         return 
                     if cond2 not in table.columns:
                         type1 = type(table[col1].iloc[0])
+                        if '.' in cond2:
+                            cond2 = float(cond2)
+                        elif cond2.isdigit():
+                            cond2 = int(cond2)
                         type2 = type(cond2)
                         if type1 == type2: 
                             table = table.loc[table[col1] == cond2]
                         else:   
-                            if (type1 == int and type2 == float) or (type1 == float and type2 == int):
-                                table = table.loc[table[col1] == cond2]
-                            else:
+                            if isinstance(type1, str) or isinstance(type2, str) or isinstance(type1, pd.DatetimeIndex) or isinstance(type2, pd.DatetimeIndex):
                                 print("Incompatible type comparison")
                                 return
+                            else:
+                                table = table.loc[table[col1] == cond2]
                     else:
                         table = table.loc[table[col1] == table[cond2]]
+            else:
+                continue 
+            if not os.path.exists("./" + user_query_list[0] + "_chunks/merged_tables/has_chunks"):
+                os.mkdir("./" + user_query_list[0] + "_chunks/merged_tables/has_chunks")
+            table.to_pickle("./" + user_query_list[0] + "_chunks/merged_tables/has_chunks/" + user_query_list[0] + "_has.pkl")
+    elif "SORT" in uqlupper:
+        #table = pd.read_pickle("./" + user_query_list[0] + "_chunks/chunk_subsets/" + os.listdir("./" + user_query_list[0] + "_chunks/chunk_subsets")[0])
+        for chunk in os.listdir("./" + user_query_list[0] + "_chunks/chunk_subsets"):
+            if os.path.isfile("./" + user_query_list[0] + "_chunks/chunk_subsets/" + chunk):
+                table = pd.read_csv("./" + user_query_list[0] + "_chunks/chunk_subsets/" + chunk).loc[:, get_columns(user_query_list)]
+                if "<" in cond:
+                    cond = user_query_list[condidx].split("<")
+                    col1 = cond[0]
+                    cond2 = cond[1]
+                    if col1 not in table.columns:
+                        return 
+                    if cond2 not in table.columns:
+                        type1 = type(table[col1].iloc[0])
+                        if '.' in cond2:
+                            cond2 = float(cond2)
+                        elif cond2.isdigit():
+                            cond2 = int(cond2)
+                        type2 = type(cond2)
+                        if type1 == type2: 
+                            table = table.loc[table[col1] < cond2]
+                        else:   
+                            if isinstance(type1, str) or isinstance(type2, str) or isinstance(type1, pd.DatetimeIndex) or isinstance(type2, pd.DatetimeIndex):
+                                print("Incompatible type comparison")
+                                return
+                            else:
+                                table = table.loc[table[col1] < cond2]
+                    else:
+                        table = table.loc[table[col1] < table[cond2]]
+                elif ">" in cond:
+                    cond = user_query_list[condidx].split(">")
+                    col1 = cond[0]
+                    cond2 = cond[1]
+                    if col1 not in table.columns:
+                        return 
+                    if cond2 not in table.columns:
+                        type1 = type(table[col1].iloc[0])
+                        if '.' in cond2:
+                            cond2 = float(cond2)
+                        elif cond2.isdigit():
+                            cond2 = int(cond2)
+                        type2 = type(cond2)
+                        if type1 == type2: 
+                            table = table.loc[table[col1] > cond2]
+                        else:   
+                            if isinstance(type1, str) or isinstance(type2, str) or isinstance(type1, pd.DatetimeIndex) or isinstance(type2, pd.DatetimeIndex):
+                                print("Incompatible type comparison")
+                                return
+                            else:
+                                table = table.loc[table[col1] > cond2]
+                    else:
+                        table = table.loc[table[col1] > table[cond2]]
+                elif "=" in cond:
+                    cond = user_query_list[condidx].split("=")
+                    col1 = cond[0]
+                    cond2 = cond[1]
+                    if col1 not in table.columns:
+                        return 
+                    if cond2 not in table.columns:
+                        type1 = type(table[col1].iloc[0])
+                        if '.' in cond2:
+                            cond2 = float(cond2)
+                        elif cond2.isdigit():
+                            cond2 = int(cond2)
+                        type2 = type(cond2)
+                        if type1 == type2: 
+                            table = table.loc[table[col1] == cond2]
+                        else:   
+                            if isinstance(type1, str) or isinstance(type2, str) or isinstance(type1, pd.DatetimeIndex) or isinstance(type2, pd.DatetimeIndex):
+                                print("Incompatible type comparison")
+                                return
+                            else:
+                                table = table.loc[table[col1] == cond2]
+                    else:
+                        table = table.loc[table[col1] == table[cond2]]
+            else:
+                continue 
+        
+            if not os.path.exists("./" + user_query_list[0] + "_chunks/chunk_subsets/has_chunks"):
+                os.mkdir("./" + user_query_list[0] + "_chunks/chunk_subsets/has_chunks")
+            table.to_pickle("./" + user_query_list[0] + "_chunks/chunk_subsets/has_chunks/" + user_query_list[0] + "_has.pkl")
+    elif "BUNCH" in uqlupper:
+        if not set(agglist).isdisjoint(set(list(map(str.upper, user_query_list)))):
+             for chunk in os.listdir("./" + user_query_list[0] + "_chunks/bunch_agg_chunks"):
+                if os.path.isfile("./" + user_query_list[0] + "_chunks/bunch_agg_chunks/" + chunk):
+                    table = pd.read_csv("./" + user_query_list[0] + "_chunks/bunch_agg_chunks/" + chunk).loc[:, get_columns(user_query_list)]
+                    if "<" in cond:
+                        cond = user_query_list[condidx].split("<")
+                        col1 = cond[0]
+                        cond2 = cond[1]
+                        if col1 not in table.columns:
+                            return 
+                        if cond2 not in table.columns:
+                            type1 = type(table[col1].iloc[0])
+                            if '.' in cond2:
+                                cond2 = float(cond2)
+                            elif cond2.isdigit():
+                                cond2 = int(cond2)
+                            type2 = type(cond2)
+                            if type1 == type2: 
+                                table = table.loc[table[col1] < cond2]
+                            else:   
+                                if isinstance(type1, str) or isinstance(type2, str) or isinstance(type1, pd.DatetimeIndex) or isinstance(type2, pd.DatetimeIndex):
+                                    print("Incompatible type comparison")
+                                    return
+                                else:
+                                    table = table.loc[table[col1] < cond2]
+                        else:
+                            table = table.loc[table[col1] < table[cond2]]
+                    elif ">" in cond:
+                        cond = user_query_list[condidx].split(">")
+                        col1 = cond[0]
+                        cond2 = cond[1]
+                        if col1 not in table.columns:
+                            return 
+                        if cond2 not in table.columns:
+                            type1 = type(table[col1].iloc[0])
+                            if '.' in cond2:
+                                cond2 = float(cond2)
+                            elif cond2.isdigit():
+                                cond2 = int(cond2)
+                            type2 = type(cond2)
+                            if type1 == type2: 
+                                table = table.loc[table[col1] > cond2]
+                            else:   
+                                if isinstance(type1, str) or isinstance(type2, str) or isinstance(type1, pd.DatetimeIndex) or isinstance(type2, pd.DatetimeIndex):
+                                    print("Incompatible type comparison")
+                                    return
+                                else:
+                                    table = table.loc[table[col1] > cond2]
+                        else:
+                            table = table.loc[table[col1] > table[cond2]]
+                    elif "=" in cond:
+                        cond = user_query_list[condidx].split("=")
+                        col1 = cond[0]
+                        cond2 = cond[1]
+                        if col1 not in table.columns:
+                            return 
+                        if cond2 not in table.columns:
+                            type1 = type(table[col1].iloc[0])
+                            if '.' in cond2:
+                                cond2 = float(cond2)
+                            elif cond2.isdigit():
+                                cond2 = int(cond2)
+                            type2 = type(cond2)
+                            if type1 == type2: 
+                                table = table.loc[table[col1] == cond2]
+                            else:   
+                                if isinstance(type1, str) or isinstance(type2, str) or isinstance(type1, pd.DatetimeIndex) or isinstance(type2, pd.DatetimeIndex):
+                                    print("Incompatible type comparison")
+                                    return
+                                else:
+                                    table = table.loc[table[col1] == cond2]
+                        else:
+                            table = table.loc[table[col1] == table[cond2]]
+                else:
+                    continue 
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
                 if not os.path.exists("./" + user_query_list[0] + "_chunks/bunch_agg_chunks/has_chunks"):
                     os.mkdir("./" + user_query_list[0] + "_chunks/bunch_agg_chunks/has_chunks")
                 table.to_pickle("./" + user_query_list[0] + "_chunks/bunch_agg_chunks/has_chunks/" + chunk[:-4] + "_has.pkl")
         else:
-            for chunk in os.listdir("./" + user_query_list[0] + "_chunks/bunched_chunks"):
-                table = pd.read_pickle(chunk)
-                if "<" in cond:
-                    cond = user_query_list[condidx].split("<")
-                    col1 = cond[0]
-                    cond2 = cond[1]
-                    if col1 not in table.columns:
-                        print("First item in comparison must be a column in the table")
-                        return 
-                    if cond2 not in table.columns:
-                        type1 = type(table[col1].iloc[0])
-                        type2 = type(cond2)
-                        if type1 == type2: 
-                            table = table.loc[table[col1] < cond2]
-                        else:   
-                            if (type1 == int and type2 == float) or (type1 == float and type2 == int):
+             for chunk in os.listdir("./" + user_query_list[0] + "_chunks/bunched_chunks"):
+                if os.path.isfile("./" + user_query_list[0] + "_chunks/bunched_chunks/" + chunk):
+                    table = pd.read_csv("./" + user_query_list[0] + "_chunks/bunched_chunks/" + chunk).loc[:, get_columns(user_query_list)]
+                    if "<" in cond:
+                        cond = user_query_list[condidx].split("<")
+                        col1 = cond[0]
+                        cond2 = cond[1]
+                        if col1 not in table.columns:
+                            return 
+                        if cond2 not in table.columns:
+                            type1 = type(table[col1].iloc[0])
+                            if '.' in cond2:
+                                cond2 = float(cond2)
+                            elif cond2.isdigit():
+                                cond2 = int(cond2)
+                            type2 = type(cond2)
+                            if type1 == type2: 
                                 table = table.loc[table[col1] < cond2]
-                            else:
-                                print("Incompatible type comparison")
-                                return
-                    else:
-                        table = table.loc[table[col1] < table[cond2]]
-                elif ">" in cond:
-                    cond = user_query_list[condidx].split(">")
-                    col1 = cond[0]
-                    cond2 = cond[1]
-                    if col1 not in table.columns:
-                        print("First item in comparison must be a column in the table")
-                        return 
-                    if cond2 not in table.columns:
-                        type1 = type(table[col1].iloc[0])
-                        type2 = type(cond2)
-                        if type1 == type2: 
-                            table = table.loc[table[col1] > cond2]
-                        else:   
-                            if (type1 == int and type2 == float) or (type1 == float and type2 == int):
+                            else:   
+                                if isinstance(type1, str) or isinstance(type2, str) or isinstance(type1, pd.DatetimeIndex) or isinstance(type2, pd.DatetimeIndex):
+                                    print("Incompatible type comparison")
+                                    return
+                                else:
+                                    table = table.loc[table[col1] < cond2]
+                        else:
+                            table = table.loc[table[col1] < table[cond2]]
+                    elif ">" in cond:
+                        cond = user_query_list[condidx].split(">")
+                        col1 = cond[0]
+                        cond2 = cond[1]
+                        if col1 not in table.columns:
+                            return 
+                        if cond2 not in table.columns:
+                            type1 = type(table[col1].iloc[0])
+                            if '.' in cond2:
+                                cond2 = float(cond2)
+                            elif cond2.isdigit():
+                                cond2 = int(cond2)
+                            type2 = type(cond2)
+                            if type1 == type2: 
                                 table = table.loc[table[col1] > cond2]
-                            else:
-                                print("Incompatible type comparison")
-                                return
-                    else:
-                        table = table.loc[table[col1] > table[cond2]]
-                elif "=" in cond:
-                    cond = user_query_list[condidx].split("=")
-                    col1 = cond[0]
-                    cond2 = cond[1]
-                    if col1 not in table.columns:
-                        print("First item in comparison must be a column in the table")
-                        return 
-                    if cond2 not in table.columns:
-                        type1 = type(table[col1].iloc[0])
-                        type2 = type(cond2)
-                        if type1 == type2: 
-                            table = table.loc[table[col1] == cond2]
-                        else:   
-                            if (type1 == int and type2 == float) or (type1 == float and type2 == int):
+                            else:   
+                                if isinstance(type1, str) or isinstance(type2, str) or isinstance(type1, pd.DatetimeIndex) or isinstance(type2, pd.DatetimeIndex):
+                                    print("Incompatible type comparison")
+                                    return
+                                else:
+                                    table = table.loc[table[col1] > cond2]
+                        else:
+                            table = table.loc[table[col1] > table[cond2]]
+                    elif "=" in cond:
+                        cond = user_query_list[condidx].split("=")
+                        col1 = cond[0]
+                        cond2 = cond[1]
+                        if col1 not in table.columns:
+                            return 
+                        if cond2 not in table.columns:
+                            type1 = type(table[col1].iloc[0])
+                            if '.' in cond2:
+                                cond2 = float(cond2)
+                            elif cond2.isdigit():
+                                cond2 = int(cond2)
+                            type2 = type(cond2)
+                            if type1 == type2: 
                                 table = table.loc[table[col1] == cond2]
-                            else:
-                                print("Incompatible type comparison")
-                                return
-                    else:
-                        table = table.loc[table[col1] == table[cond2]]
+                            else:   
+                                if isinstance(type1, str) or isinstance(type2, str) or isinstance(type1, pd.DatetimeIndex) or isinstance(type2, pd.DatetimeIndex):
+                                    print("Incompatible type comparison")
+                                    return
+                                else:
+                                    table = table.loc[table[col1] == cond2]
+                        else:
+                            table = table.loc[table[col1] == table[cond2]]
+                else:
+                    continue 
+               
                 if not os.path.exists("./" + user_query_list[0] + "_chunks/bunched_chunks/has_chunks"):
                     os.mkdir("./" + user_query_list[0] + "_chunks/bunched_chunks/has_chunks")
                 table.to_pickle("./" + user_query_list[0] + "_chunks/bunched_chunks/has_chunks/" + chunk[:-4] + "_has.pkl")
     elif not set(agglist).isdisjoint(set(list(map(str.upper, user_query_list)))):
         if "COLUMNS" in uqlupper:
-            for chunk in os.listdir("./" + user_query_list[0] + "_chunks/col_agg"):
-                table = pd.read_pickle(chunk)
-                if "<" in cond:
-                    cond = user_query_list[condidx].split("<")
-                    col1 = cond[0]
-                    cond2 = cond[1]
-                    if col1 not in table.columns:
-                        print("First item in comparison must be a column in the table")
-                        return 
-                    if cond2 not in table.columns:
-                        type1 = type(table[col1].iloc[0])
-                        type2 = type(cond2)
-                        if type1 == type2: 
-                            table = table.loc[table[col1] < cond2]
-                        else:   
-                            if (type1 == int and type2 == float) or (type1 == float and type2 == int):
+             for chunk in os.listdir("./" + user_query_list[0] + "_chunks/col_agg"):
+                if os.path.isfile("./" + user_query_list[0] + "_chunks/col_agg/" + chunk):
+                    table = pd.read_csv("./" + user_query_list[0] + "_chunks/col_agg/" + chunk).loc[:, get_columns(user_query_list)]
+                    if "<" in cond:
+                        cond = user_query_list[condidx].split("<")
+                        col1 = cond[0]
+                        cond2 = cond[1]
+                        if col1 not in table.columns:
+                            return 
+                        if cond2 not in table.columns:
+                            type1 = type(table[col1].iloc[0])
+                            if '.' in cond2:
+                                cond2 = float(cond2)
+                            elif cond2.isdigit():
+                                cond2 = int(cond2)
+                            type2 = type(cond2)
+                            if type1 == type2: 
                                 table = table.loc[table[col1] < cond2]
-                            else:
-                                print("Incompatible type comparison")
-                                return
-                    else:
-                        table = table.loc[table[col1] < table[cond2]]
-                elif ">" in cond:
-                    cond = user_query_list[condidx].split(">")
-                    col1 = cond[0]
-                    cond2 = cond[1]
-                    if col1 not in table.columns:
-                        print("First item in comparison must be a column in the table")
-                        return 
-                    if cond2 not in table.columns:
-                        type1 = type(table[col1].iloc[0])
-                        type2 = type(cond2)
-                        if type1 == type2: 
-                            table = table.loc[table[col1] > cond2]
-                        else:   
-                            if (type1 == int and type2 == float) or (type1 == float and type2 == int):
+                            else:   
+                                if isinstance(type1, str) or isinstance(type2, str) or isinstance(type1, pd.DatetimeIndex) or isinstance(type2, pd.DatetimeIndex):
+                                    print("Incompatible type comparison")
+                                    return
+                                else:
+                                    table = table.loc[table[col1] < cond2]
+                        else:
+                            table = table.loc[table[col1] < table[cond2]]
+                    elif ">" in cond:
+                        cond = user_query_list[condidx].split(">")
+                        col1 = cond[0]
+                        cond2 = cond[1]
+                        if col1 not in table.columns:
+                            return 
+                        if cond2 not in table.columns:
+                            type1 = type(table[col1].iloc[0])
+                            if '.' in cond2:
+                                cond2 = float(cond2)
+                            elif cond2.isdigit():
+                                cond2 = int(cond2)
+                            type2 = type(cond2)
+                            if type1 == type2: 
                                 table = table.loc[table[col1] > cond2]
-                            else:
-                                print("Incompatible type comparison")
-                                return
-                    else:
-                        table = table.loc[table[col1] > table[cond2]]
-                elif "=" in cond:
-                    cond = user_query_list[condidx].split("=")
-                    col1 = cond[0]
-                    cond2 = cond[1]
-                    if col1 not in table.columns:
-                        print("First item in comparison must be a column in the table")
-                        return 
-                    if cond2 not in table.columns:
-                        type1 = type(table[col1].iloc[0])
-                        type2 = type(cond2)
-                        if type1 == type2: 
-                            table = table.loc[table[col1] == cond2]
-                        else:   
-                            if (type1 == int and type2 == float) or (type1 == float and type2 == int):
+                            else:   
+                                if isinstance(type1, str) or isinstance(type2, str) or isinstance(type1, pd.DatetimeIndex) or isinstance(type2, pd.DatetimeIndex):
+                                    print("Incompatible type comparison")
+                                    return
+                                else:
+                                    table = table.loc[table[col1] > cond2]
+                        else:
+                            table = table.loc[table[col1] > table[cond2]]
+                    elif "=" in cond:
+                        cond = user_query_list[condidx].split("=")
+                        col1 = cond[0]
+                        cond2 = cond[1]
+                        if col1 not in table.columns:
+                            return 
+                        if cond2 not in table.columns:
+                            type1 = type(table[col1].iloc[0])
+                            if '.' in cond2:
+                                cond2 = float(cond2)
+                            elif cond2.isdigit():
+                                cond2 = int(cond2)
+                            type2 = type(cond2)
+                            if type1 == type2: 
                                 table = table.loc[table[col1] == cond2]
-                            else:
-                                print("Incompatible type comparison")
-                                return
-                    else:
-                        table = table.loc[table[col1] == table[cond2]]
+                            else:   
+                                if isinstance(type1, str) or isinstance(type2, str) or isinstance(type1, pd.DatetimeIndex) or isinstance(type2, pd.DatetimeIndex):
+                                    print("Incompatible type comparison")
+                                    return
+                                else:
+                                    table = table.loc[table[col1] == cond2]
+                        else:
+                            table = table.loc[table[col1] == table[cond2]]
+                else:
+                    continue 
+                
                 if not os.path.exists("./" + user_query_list[0] + "_chunks/col_agg/has_chunks"):
                     os.mkdir("./" + user_query_list[0] + "_chunks/col_agg/has_chunks")
                 table.to_pickle("./" + user_query_list[0] + "_chunks/col_agg/has_chunks/" + chunk[:-4] + "_has.pkl")
         else:
+           ### Copypaste this above
             for chunk in os.listdir("./" + user_query_list[0] + "_chunks/agg"):
-                table = pd.read_pickle(chunk)
-                if "<" in cond:
-                    cond = user_query_list[condidx].split("<")
-                    col1 = cond[0]
-                    cond2 = cond[1]
-                    if col1 not in table.columns:
-                        print("First item in comparison must be a column in the table")
-                        return 
-                    if cond2 not in table.columns:
-                        type1 = type(table[col1].iloc[0])
-                        type2 = type(cond2)
-                        if type1 == type2: 
-                            table = table.loc[table[col1] < cond2]
-                        else:   
-                            if (type1 == int and type2 == float) or (type1 == float and type2 == int):
+                if os.path.isfile("./" + user_query_list[0] + "_chunks/agg/" + chunk):
+                    table = pd.read_csv("./" + user_query_list[0] + "_chunks/agg/" + chunk).loc[:, get_columns(user_query_list)]
+                    if "<" in cond:
+                        cond = user_query_list[condidx].split("<")
+                        col1 = cond[0]
+                        cond2 = cond[1]
+                        if col1 not in table.columns:
+                            return 
+                        if cond2 not in table.columns:
+                            type1 = type(table[col1].iloc[0])
+                            if '.' in cond2:
+                                cond2 = float(cond2)
+                            elif cond2.isdigit():
+                                cond2 = int(cond2)
+                            type2 = type(cond2)
+                            if type1 == type2: 
                                 table = table.loc[table[col1] < cond2]
-                            else:
-                                print("Incompatible type comparison")
-                                return
-                    else:
-                        table = table.loc[table[col1] < table[cond2]]
-                elif ">" in cond:
-                    cond = user_query_list[condidx].split(">")
-                    col1 = cond[0]
-                    cond2 = cond[1]
-                    if col1 not in table.columns:
-                        print("First item in comparison must be a column in the table")
-                        return 
-                    if cond2 not in table.columns:
-                        type1 = type(table[col1].iloc[0])
-                        type2 = type(cond2)
-                        if type1 == type2: 
-                            table = table.loc[table[col1] > cond2]
-                        else:   
-                            if (type1 == int and type2 == float) or (type1 == float and type2 == int):
+                            else:   
+                                if isinstance(type1, str) or isinstance(type2, str) or isinstance(type1, pd.DatetimeIndex) or isinstance(type2, pd.DatetimeIndex):
+                                    print("Incompatible type comparison")
+                                    return
+                                else:
+                                    table = table.loc[table[col1] < cond2]
+                        else:
+                            table = table.loc[table[col1] < table[cond2]]
+                    elif ">" in cond:
+                        cond = user_query_list[condidx].split(">")
+                        col1 = cond[0]
+                        cond2 = cond[1]
+                        if col1 not in table.columns:
+                            return 
+                        if cond2 not in table.columns:
+                            type1 = type(table[col1].iloc[0])
+                            if '.' in cond2:
+                                cond2 = float(cond2)
+                            elif cond2.isdigit():
+                                cond2 = int(cond2)
+                            type2 = type(cond2)
+                            if type1 == type2: 
                                 table = table.loc[table[col1] > cond2]
-                            else:
-                                print("Incompatible type comparison")
-                                return
-                    else:
-                        table = table.loc[table[col1] > table[cond2]]
-                elif "=" in cond:
-                    cond = user_query_list[condidx].split("=")
-                    col1 = cond[0]
-                    cond2 = cond[1]
-                    if col1 not in table.columns:
-                        print("First item in comparison must be a column in the table")
-                        return 
-                    if cond2 not in table.columns:
-                        type1 = type(table[col1].iloc[0])
-                        type2 = type(cond2)
-                        if type1 == type2: 
-                            table = table.loc[table[col1] == cond2]
-                        else:   
-                            if (type1 == int and type2 == float) or (type1 == float and type2 == int):
+                            else:   
+                                if isinstance(type1, str) or isinstance(type2, str) or isinstance(type1, pd.DatetimeIndex) or isinstance(type2, pd.DatetimeIndex):
+                                    print("Incompatible type comparison")
+                                    return
+                                else:
+                                    table = table.loc[table[col1] > cond2]
+                        else:
+                            table = table.loc[table[col1] > table[cond2]]
+                    elif "=" in cond:
+                        cond = user_query_list[condidx].split("=")
+                        col1 = cond[0]
+                        cond2 = cond[1]
+                        if col1 not in table.columns:
+                            return 
+                        if cond2 not in table.columns:
+                            type1 = type(table[col1].iloc[0])
+                            if '.' in cond2:
+                                cond2 = float(cond2)
+                            elif cond2.isdigit():
+                                cond2 = int(cond2)
+                            type2 = type(cond2)
+                            if type1 == type2: 
                                 table = table.loc[table[col1] == cond2]
-                            else:
-                                print("Incompatible type comparison")
-                                return
-                    else:
-                        table = table.loc[table[col1] == table[cond2]]
+                            else:   
+                                if isinstance(type1, str) or isinstance(type2, str) or isinstance(type1, pd.DatetimeIndex) or isinstance(type2, pd.DatetimeIndex):
+                                    print("Incompatible type comparison")
+                                    return
+                                else:
+                                    table = table.loc[table[col1] == cond2]
+                        else:
+                            table = table.loc[table[col1] == table[cond2]]
+                else:
+                    continue  
                 if not os.path.exists("./" + user_query_list[0] + "_chunks/agg/has_chunks"):
                     os.mkdir("./" + user_query_list[0] + "_chunks/agg/has_chunks")
                 table.to_pickle("./" + user_query_list[0] + "_chunks/agg/has_chunks/" + chunk[:-4] + "_has.pkl")
+            
+            
+            
+            
+            
+            
+    
+                
     elif "COLUMNS" in uqlupper:
         ### Copypaste this above
         for chunk in os.listdir("./" + user_query_list[0] + "_chunks"):

@@ -6,50 +6,51 @@ def sort(user_query_list):
     return sort_chunk_by_limit(sortedpath)
 
 def sort_chunk(user_query_list):
-    if not os.path.exists("./chunks/sorted_chunks"):
-        os.mkdir("./chunks/sorted_chunks")
-    sortedpath = "./chunks/sorted_chunks"
+    print(os.getcwd())
+    if not os.path.exists("./"+ user_query_list[0] + "_chunks/sorted_chunks"):
+        
+        os.mkdir("./"+ user_query_list[0] + "_chunks/sorted_chunks")
+    sortedpath = "./"+ user_query_list[0] + "_chunks/sorted_chunks"
     agglist = ["TOTALNUM", "SUM", "MEAN", "MIN", "MAX"]
     if "BUNCH" in user_query_list:
         if not set(agglist).isdisjoint(set(list(map(str.upper, user_query_list)))):
-            file_path = os.path.join("./chunks", "bunch_agg_chunks")
+            file_path = os.path.join("./"+ user_query_list[0] + "_chunks", "bunch_agg_chunks")
         else:
-            file_path = os.path.join("./chunks", "bunched_chunks")
+            file_path = os.path.join("./"+ user_query_list[0] + "_chunks", "bunched_chunks")
     elif not set(agglist).isdisjoint(set(list(map(str.upper, user_query_list)))):
-        file_path = os.path.join("./chunks", "col_agg")
+        file_path = os.path.join("./"+ user_query_list[0] + "_chunks", "col_agg")
     else: 
-        for filename in os.listdir("./chunks"):
-            if not file_path:
-                file_path = os.path.join("./chunks", filename)
+        for filename in os.listdir("./"+ user_query_list[0] + "_chunks"):
+            file_path = os.path.join("./"+ user_query_list[0] + "_chunks", filename)
             sorted_chunk = sort_direction(user_query_list, file_path)
             sorted_chunk.to_pickle(".chunks/sorted_chunks/" + filename + "_sorted.pkl")
     return sortedpath
 
 def sort_chunk_by_limit(sorted_chunks_directory, user_query_list):
     sort_col = user_query_list[list(map(str.upper, user_query_list)).index("SORT") + 1]
-    if not os.path.exists("./chunks/chunk_subsets"):
-        os.mkdir("./chunks/chunk_subsets")
+    if not os.path.exists("./"+ user_query_list[0] + "_chunks/chunk_subsets"):
+        os.mkdir("./"+ user_query_list[0] + "_chunks/chunk_subsets")
     for filename in os.listdir(sorted_chunks_directory):
          file_subset = pd.read_csv(filename, nrows = 450)
          file_subset_name = f"{filename.split('.')[0]}_subset.pkl"
-         file_subset_path = os.path.join('./chunks/chunk_subsets', file_subset_name)
+         file_subset_path = os.path.join("./"+ user_query_list[0] + "_chunks/chunk_subsets", file_subset_name)
          file_subset.to_pickle(file_subset_path)
-    subset_files = os.listdir('./chunks/chunk_subsets')
+    subset_files = os.listdir("./"+ user_query_list[0] + "_chunks/chunk_subsets")
     while len(subset_files) > 1:
-        chunk1 = pd.read_pickle(os.path.join('./chunks/chunk_subsets', subset_files.pop(0))) #get the first file 
-        chunk2 = pd.read_pickle(os.path.join('./chunks/chunk_subsets', subset_files.pop(0))) #second file 
+        chunk1 = pd.read_pickle(os.path.join("./"+ user_query_list[0] + "_chunks/chunk_subsets", subset_files.pop(0))) #get the first file 
+        chunk2 = pd.read_pickle(os.path.join("./"+ user_query_list[0] + "_chunks/chunk_subsets", subset_files.pop(0))) #second file 
         if "ASC" in list(map(str.upper, user_query_list)):
             combined_merged_chunk = merge_asc(chunk1.tolist(), chunk2.tolist(), sort_col)
         elif "DESC" in list(map(str.upper, user_query_list)):
             combined_merged_chunk = merge_desc(chunk1.tolist(), chunk2.tolist(), sort_col)
-        pd.DataFrame(combined_merged_chunk).to_pickle(os.path.join('./chunks/chunk_subsets', f"merged_subset_{len(subset_files) + 1 }.pkl"))
+        pd.DataFrame(combined_merged_chunk).to_pickle(os.path.join("./"+ user_query_list[0] + "_chunks/chunk_subsets", f"merged_subset_{len(subset_files) + 1 }.pkl"))
         subset_files.append(f"merged_subset_{len(subset_files) + 1 }.pkl")
-    final_merged_table_path = os.path.join("./chunks/chunk_subsets", subset_files[0])
+    final_merged_table_path = os.path.join("./"+ user_query_list[0] + "_chunks/chunk_subsets", subset_files[0])
     final_merged_table = pd.read_pickle(final_merged_table_path)
     return final_merged_table
 
 def sort_direction(user_query_list, filepath):
-    sortcol = list(map(str.upper, user_query_list)).index("SORT") + 1
+    sortcol = user_query_list[list(map(str.upper, user_query_list)).index("SORT") + 1]
     if "ASC" in user_query_list:
         return ascSort(filepath, sortcol)
     elif "DESC" in user_query_list:
@@ -58,6 +59,8 @@ def sort_direction(user_query_list, filepath):
         raise ValueError('Direction keyword missing, please specify direction to sort as ASC or DESC!')
 
 def ascSort(table, sortcol):
+     print(table)
+     print(sortcol)
      if sortcol not in table.columns: 
          raise ValueError(f"Column not found")
      table_list = table.to_dict('records')

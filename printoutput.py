@@ -12,27 +12,7 @@ def return_table(user_query_list, tablename, chunkno=None, rownum=None):
     merged_tables = "/merged_tables"              # directly under chunks
     sorted_tables = "/chunk_subsets"              # directly under chunks
     has_chunks = "/has_chunks"                    # could be under any of above
-    if "MAKE" in user_query_list:
-        tbl = pd.read_pickle("./table/" + tablename + ".pkl")
-        return (tbl.head())
-    elif "EDIT" in user_query_list:
-        if "INSERT" in user_query_list and "FILE" not in user_query_list:
-            tbl = pd.read_csv(tablename + "_chunk" + chunkno + ".csv")
-            return (tbl.tail())
-        elif "INSERT FILE" in user_query_list:
-            tbl = pd.read_pickle(user_query_list[0] + ".pkl")
-            return (tbl.head())
-        elif "UPDATE" in user_query_list:
-            tbl = pd.read_csv(tablename + "_chunk" + chunkno + ".csv")
-            start = rownum - 2
-            end = rownum + 3
-            return (tbl.iloc[start:end])
-        elif "DELETE" in user_query_list:
-            tbl = pd.read_csv(tablename + "_chunk" + chunkno + ".csv")
-            start = rownum - 2
-            end = rownum + 3
-            return (tbl.iloc[start:end])
-    elif "FETCH" in user_query_list:
+    if "FETCH" in user_query_list:
         filepath = chunk_path
         agglist = ["TOTALNUM", "SUM", "MEAN", "MIN", "MAX"]
         if "BUNCH" in user_query_list:
@@ -69,7 +49,9 @@ def return_table(user_query_list, tablename, chunkno=None, rownum=None):
         if "HAS" in user_query_list:
             filepath += has_chunks
         df = pd.DataFrame()
+        print(filepath)
         for chunk in os.listdir(filepath):
-            s = pd.read_csv(filepath + "/" + chunk, index_col=0)
+            print(filepath + "/" + chunk)
+            s = pd.read_pickle(filepath + "/" + chunk)
             df = pd.concat([df, s])
         return df

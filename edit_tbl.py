@@ -53,8 +53,6 @@ def insert(user_query_list):
                 table.to_csv(chunk_path + "/" + last)
                 table.to_pickle("./table/" + user_query_list[0] + ".pkl")
                 print("Inserted into existing chunk number (", last, "): \n", record)
-                user_query_list.insert(0, "EDIT")
-                return return_table(user_query_list, user_query_list[1], last)
             else:
                 table = record
                 table.columns = colnames
@@ -62,8 +60,6 @@ def insert(user_query_list):
                 table.to_csv(chunk_path+"/"+new)
                 table.to_pickle("./table/" + user_query_list[0] + ".pkl")
                 print("Inserted into new chunk (", new, "): ", record)
-                user_query_list.insert(0, "EDIT")
-                return return_table(user_query_list, user_query_list[1], new)
     else: 
         os.mkdir(chunk_path)
         table = record
@@ -72,8 +68,6 @@ def insert(user_query_list):
         table.to_csv(chunk_path+"/"+new)
         table.to_pickle("./table/" + user_query_list[0] + ".pkl")
         print("No chunks exist. Inserted into new chunk (", new, "): ", dict([tuple(data.split('=')) for data in user_query_list[2:]]))
-        user_query_list.insert(0, "EDIT")
-        return return_table(user_query_list, user_query_list[1], new)
         
 def insert_file(user_query_list, current_db):
     schema = pd.read_pickle("./table/" + user_query_list[0] + ".pkl")
@@ -92,8 +86,6 @@ def insert_file(user_query_list, current_db):
         table[colname] = table[colname].astype(datatype)
     table.to_pickle("./table/" + user_query_list[0] + ".pkl")
     print("Inserted file", df.name)
-    user_query_list.insert(0, "EDIT")
-    return return_table(user_query_list, user_query_list[1])
 
 def update(user_query_list):
     schema = pd.read_pickle("./table/" + user_query_list[0] + ".pkl")
@@ -123,8 +115,8 @@ def update(user_query_list):
                 table[i] = table[i].astype(k, copy = False)
     table.to_pickle("./table/" + user_query_list[0] + ".pkl")
     table.to_csv(chunk_path)
-    user_query_list.insert(0, "EDIT")
-    return return_table(user_query_list, user_query_list[1], chunkno, rownum)
+    returned_row = pd.DataFrame(table.iloc[rownum]).T
+    print("updated row", rownum, ": \n", returned_row)
 
 def delete(user_query_list):
     table = pd.read_pickle("./table/" + user_query_list[0] + ".pkl")
@@ -133,6 +125,7 @@ def delete(user_query_list):
     global dtypes
     dtypes = list(table.dtypes)
     rownum = int(user_query_list[2][3:])
+    returned_row = pd.DataFrame(table.iloc[rownum]).T
     if rownum >= 10000:
         chunkno = (rownum // 10000) + 1
         chunk_path = "./" + user_query_list[0] + "_chunks/" + user_query_list[0] + "_chunk" + str(chunkno) + ".csv"
@@ -149,5 +142,4 @@ def delete(user_query_list):
     if int(user_query_list[2][3:]) < 10000:
         table.to_pickle("./table/" + user_query_list[0] + ".pkl")
     table.to_csv(chunk_path)
-    user_query_list.insert(0, "EDIT")
-    return return_table(user_query_list, user_query_list[1], chunkno, rownum)
+    print("deleted row", rownum, ": \n", returned_row)

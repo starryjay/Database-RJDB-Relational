@@ -37,8 +37,7 @@ def make(user_query_list):
         if not os.path.exists("./table"):
             os.mkdir("./table")
         tbl.to_pickle("./table/" + tbl.name + '.pkl')
-        user_query_list.insert(0, "MAKE")
-        return return_table(user_query_list, tablename)
+        print("Successfully created table", tablename, "with columns", colnames, "and datatypes", dtypes)
     else:
         print("Please use keyword COPY or COLUMNS!")
         return
@@ -51,5 +50,4 @@ def make_copy(user_query_list):
     curr_table = pd.read_pickle("./table/" + existingtable + '.pkl')
     copy = curr_table.copy(deep=False)
     copy.to_pickle("./table/" + copytable + '.pkl')
-    user_query_list.insert(0, "MAKE")
-    return return_table(user_query_list, copytable)
+    print("Successfully created copy of table", existingtable, "called", copytable, "with columns", colnames, "and datatypes", dtypes)

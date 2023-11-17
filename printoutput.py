@@ -1,9 +1,11 @@
 import pandas as pd
 import os
 
-def return_table(user_query_list, tablename, chunkno=None, rownum=None, agg_function = None):
-    user_query_list = list(map(str.upper, user_query_list))
-    # parse whole user_query_list 
+def find_directory(user_query_list):
+    if "FETCH" in user_query_list:
+        tablename = user_query_list[1]
+    else:
+        tablename = user_query_list[0]
     chunk_path = "./" + tablename + "_chunks"
     col_agg = "/col_agg"                          # directly under chunks
     agg = "/agg"                                  # directly under chunks
@@ -12,6 +14,7 @@ def return_table(user_query_list, tablename, chunkno=None, rownum=None, agg_func
     merged_tables = "/merged_tables"              # directly under chunks
     sorted_tables = "/chunk_subsets"              # directly under chunks
     has_chunks = "/has_chunks"                    # could be under any of above
+    
     if "FETCH" in user_query_list:
         filepath = chunk_path
         agglist = ["TOTALNUM", "SUM", "MEAN", "MIN", "MAX"]
@@ -47,25 +50,21 @@ def return_table(user_query_list, tablename, chunkno=None, rownum=None, agg_func
                 if "SORT" in user_query_list:
                     filepath += sorted_tables
         if "HAS" in user_query_list:
-            filepath += has_chunks
-        df = pd.DataFrame()
-        #print(filepath)
-        for chunk in os.listdir(filepath):
-            #print(filepath + "/" + chunk)
-            if bunch_agg_chunks in filepath:
-                beg  = chunk.rfind("_") + 1
-                
-                end = chunk.rfind(".")
-             
-           
+            filepath += has_chunks      
+    return filepath
 
-                if chunk[beg:end].upper() == agg_function:
-                    
-                    s = pd.read_pickle(filepath + "/" + chunk)
-                    df = pd.concat([df, s])
-                    
-            else:
+def return_table(user_query_list, agg_function = None):
+    user_query_list = list(map(str.upper, user_query_list))
+    filepath = find_directory(user_query_list)
+    df = pd.DataFrame()
+    for chunk in os.listdir(filepath):
+        if "/bunch_agg_chunks" in filepath:
+            beg  = chunk.rfind("_") + 1
+            end = chunk.rfind(".")
+            if chunk[beg:end].upper() == agg_function: 
                 s = pd.read_pickle(filepath + "/" + chunk)
                 df = pd.concat([df, s])
-           
-        return df
+        else:
+            s = pd.read_pickle(filepath + "/" + chunk)
+            df = pd.concat([df, s])
+    return df

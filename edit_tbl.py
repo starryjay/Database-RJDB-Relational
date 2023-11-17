@@ -1,6 +1,5 @@
 import pandas as pd
 import os
-from printoutput import return_table
 from loaddata import load_data_to_file_system, clean_data
 global colnames
 global dtypes
@@ -37,12 +36,13 @@ def insert(user_query_list):
         if os.listdir(chunk_path):
             chunknolist = []
             for chunk in os.listdir(chunk_path):
-                chunkno = ""
-                for c in chunk: 
-                    if c.isdigit(): 
-                        chunkno += c 
-                chunkno = int(chunkno)
-                chunknolist.append(chunkno)
+                if os.path.isfile(chunk_path + "/" + chunk):
+                    chunkno = ""
+                    for c in chunk: 
+                        if c.isdigit(): 
+                            chunkno += c 
+                    chunkno = int(chunkno)
+                    chunknolist.append(chunkno)
             last = user_query_list[0] + "_chunk" + str(max(chunknolist)) + ".csv"
             table = pd.read_csv(chunk_path+"/"+last, index_col=0)
             table.columns = colnames

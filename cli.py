@@ -140,6 +140,7 @@ class CLI(cmd.Cmd):
         Syntax for MAKE COPY (existing table):
             MAKE COPY tablename1 tablename2
 
+        Supported datatypes are int, float, datetime64, and str. You MUST type these exactly as written.
         If using MAKE COPY, do not use COLUMNS. 
         MAKE COPY will only copy the table's schema, not its contents.
 

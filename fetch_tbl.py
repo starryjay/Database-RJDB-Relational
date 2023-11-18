@@ -90,7 +90,7 @@ def tblsum(user_query_list, table):
                 print("current file: ", chunk)
                 if chunk.endswith(".csv"):
                     print("found csv: ", chunk)
-                    table = pd.read_csv(chunk_path + "/" + chunk, index_col=0).loc[:, cols_list]
+                    table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
                     print("current table: \n", table)
                     sumseries = pd.Series(table[col].sum(), index=range(len(table[col])))
                     print("sum series: ", sumseries)
@@ -125,7 +125,8 @@ def totalnum(user_query_list, table):
                 os.mkdir("./" + user_query_list[0] + "_chunks/col_agg")
             for chunk in os.listdir(chunk_path):
                 if chunk.endswith(".csv"):
-                    table = pd.read_csv(chunk_path + "/" + chunk, index_col=0).loc[:, cols_list]
+                    table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                    
                     totalseries = pd.Series(len(table[col]), index=range(len(table[col])))
                     table.insert(len(table.columns), "totalnum_"+col, totalseries)
                     table.to_pickle(chunk_path + "/col_agg/" + chunk[:-4] + "_col_totalnum.pkl")
@@ -157,7 +158,7 @@ def mean(user_query_list, table):
                 os.mkdir("./" + user_query_list[0] + "_chunks/col_agg")
             for chunk in os.listdir(chunk_path):
                 if chunk.endswith(".csv"):
-                    table = pd.read_csv(chunk_path + "/" + chunk, index_col=0).loc[:, cols_list]
+                    table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
                     meanseries = pd.Series(table[col].mean(), index=range(len(table[col])))
                     table.insert(len(table.columns), "mean_"+col, meanseries)
                     table.to_pickle(chunk_path + "/col_agg/" + chunk[:-4] + "_col_mean.pkl")
@@ -186,7 +187,7 @@ def tblmin(user_query_list, table):
                 os.mkdir("./" + user_query_list[0] + "_chunks/col_agg")
             for chunk in os.listdir(chunk_path):
                 if chunk.endswith(".csv"):
-                    table = pd.read_csv(chunk_path + "/" + chunk, index_col=0).loc[:, cols_list]
+                    table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
                     minseries = pd.Series(table[col].min(), index=range(len(table[col])))
                     table.insert(len(table.columns), "min_"+col, minseries)
                     table.to_pickle(chunk_path + "/col_agg/" + chunk[:-4] + "_col_min.pkl")
@@ -215,7 +216,7 @@ def tblmax(user_query_list, table):
                 os.mkdir("./" + user_query_list[0] + "_chunks/col_agg")
             for chunk in os.listdir(chunk_path):
                 if chunk.endswith(".csv"):
-                    table = pd.read_csv(chunk_path + "/" + chunk, index_col=0).loc[:, cols_list]
+                    table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
                     maxseries = pd.Series(table[col].max(), index=range(len(table[col])))
                     table.insert(len(table.columns), "max_"+col, maxseries)
                     table.to_pickle(chunk_path + "/col_agg/" + chunk[:-4] + "_col_max.pkl")
@@ -250,15 +251,15 @@ def bunch_agg(user_query_list, table):
         chunk_path = "./" + user_query_list[0] + "_chunks"
         for chunk in os.listdir(chunk_path):
             if chunk.endswith(".csv"):
-                print("reading file: ", chunk)
-                table = pd.read_csv(chunk_path + "/" + chunk, index_col=0).loc[:, cols_list]
-                print("table read from csv in bunch_agg: \n", table)
+               
+                table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+            
                 groups = table[bunchcol].unique()
-                print("bunch groups: ", groups)
+                
                 tbldict = {group: table[table[bunchcol] == group] for group in groups}
-                print("tbldict: ", tbldict)
+              
                 if "SUM" in list(map(str.upper, user_query_list)):
-                    print("entered sum logic in bunch_agg")
+                   # print("entered sum logic in bunch_agg")
                     agg_func = "sum"
                     sumcol = user_query_list[list(map(str.upper, user_query_list)).index("SUM") + 1]
                     print("sumcol: ", sumcol)
@@ -268,8 +269,11 @@ def bunch_agg(user_query_list, table):
                     sumdict = {group: pd.Series(table.loc[table[bunchcol] == group, sumcol].sum(), index=range(len(table[bunchcol])), name='sum') for group in groups}
                     for key in tbldict.keys():
                         tbldict[key].insert(len(tbldict[key].columns), 'sum_'+sumcol, sumdict[key])
+                  
                     final_table = pd.concat([v for v in tbldict.values()], keys = [k for k in tbldict.keys()], names=[bunchcol + '_bunched', 'ROWID'])
-                    print("table after concatenation: \n", final_table, "\n")
+                   
+                    return final_table
+                    #print("table after concatenation: \n", final_table.head(), "\n")
                 elif "TOTALNUM" in list(map(str.upper, user_query_list)):
                     print("Table before doing TOTAL NUM",table)
                     agg_func = "totalnum"
@@ -313,7 +317,7 @@ def bunch_agg(user_query_list, table):
                     table = pd.concat([v for v in tbldict.values()], keys = [k for k in tbldict.keys()], names=[bunchcol + '_bunched', 'ROWID'])
                 table.to_pickle(bunch_agg_chunk_path + "/" + chunk[:-4] + "bunch_" + agg_func + ".pkl")
         print("grouped successfully by", bunchcol, "; aggregate function is", agg_func)
-    return final_table
+    
 
 def bunch(user_query_list, table):
     bunchidx = list(map(str.upper, user_query_list)).index("BUNCH") + 1
@@ -333,7 +337,7 @@ def bunch(user_query_list, table):
     else:
         for chunk in os.listdir(chunk_path):
             if chunk.endswith(".csv"):
-                table = pd.read_csv(chunk_path + "/" + chunk, index_col=0).loc[:, cols_list]
+                table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
                 groups = table[bunchcol].unique()
                 tbldict = {group: table[table[bunchcol] == group] for group in groups}
                 table = pd.concat([v for v in tbldict.values()], keys = [k for k in tbldict.keys()], names=[bunchcol + '_bunched', 'ROWID'])
@@ -1035,7 +1039,7 @@ def sort_bunch(user_query_list, sortcol):
         if os.path.isfile(file_path + "/" + chunk) and chunk[0] != ".":
             table = pd.read_pickle(file_path + "/" + chunk)
             if bunchcol[:-8] == sortcol:
-                sorted_chunk = table.sort_index(level=bunchcol)
+                sorted_chunk = table.sort_index(level=0)
                 if not os.path.exists(sorted_chunk_directory):
                     os.mkdir(sorted_chunk_directory)
                 sorted_chunk.to_csv(sorted_chunk_directory + "/" + chunk[:-4] + "_sorted_on_bunch.csv")
@@ -1170,6 +1174,6 @@ def merge_asc(left, right, sortcol_index):
 
 if __name__ == "__main__": 
     print(os.getcwd())
-    os.chdir("./DSCI-551-Final-Proj-Rel/test_db")
+    os.chdir("./test_db")
     user_query_list = "test columns col1 col2 col3 sum col1 bunch col1".split()
     fetch(user_query_list)

@@ -46,6 +46,7 @@ def find_directory(user_query_list):
                     filepath += sorted_tables
                 else:
                     filepath += merged_tables
+                    print("Merged tables", merged_tables)
             else:
                 if "SORT" in user_query_list:
                     filepath += sorted_tables
@@ -54,17 +55,18 @@ def find_directory(user_query_list):
     return filepath
 
 def return_table(user_query_list, agg_function = None):
-    user_query_list = list(map(str.upper, user_query_list))
     filepath = find_directory(user_query_list)
     df = pd.DataFrame()
     for chunk in os.listdir(filepath):
-        if "/bunch_agg_chunks" in filepath:
-            beg  = chunk.rfind("_") + 1
-            end = chunk.rfind(".")
-            if chunk[beg:end].upper() == agg_function: 
-                s = pd.read_pickle(filepath + "/" + chunk)
+        if os.path.isfile(filepath + "/" + chunk) and chunk[0] != ".":
+            if "/bunch_agg_chunks" in filepath:
+                beg  = chunk.rfind("_") + 1
+                end = chunk.rfind(".")
+                if chunk[beg:end].upper() == agg_function: 
+                    s = pd.read_csv(filepath + "/" + chunk)
+                    df = pd.concat([df, s])
+            else:
+                print("filepath of current file: ", filepath + "/" + chunk)
+                s = pd.read_csv(filepath + "/" + chunk)
                 df = pd.concat([df, s])
-        else:
-            s = pd.read_pickle(filepath + "/" + chunk)
-            df = pd.concat([df, s])
     return df

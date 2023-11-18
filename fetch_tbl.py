@@ -1,7 +1,7 @@
 import pandas as pd
 import os
 import warnings
-from printoutput import return_table, find_directory
+from printoutput import find_directory
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 # [tablename, COLUMNS, columns, TOTALNUM/SUM/MEAN/MIN/MAX, column, 
@@ -30,19 +30,14 @@ def fetch(user_query_list):
         if type(table) == str:
             return
     if "SORT" in uqlupper:
-        print("In sort function")
         table = sort(user_query_list)
     elif "MERGE" in uqlupper:
         table = merge(user_query_list)
     if "HAS" in uqlupper:
         table = has(user_query_list)
     if "COLUMNS" in uqlupper:
-        table = table[get_columns(user_query_list)]
-    user_query_list.insert(0, "FETCH")
-    if "BUNCH" in uqlupper and "SORT" in uqlupper:
-        print("bunched and sorted table: \n", table)
-    else:
-        print(table)
+        table = table.loc[:, get_columns(user_query_list)]
+    print(table)
 
 def get_columns(user_query_list):
     uqlupper = list(map(str.upper, user_query_list))
@@ -56,6 +51,28 @@ def get_columns(user_query_list):
         cols_list = user_query_list[2:nextkwidx]
     else:
         cols_list = user_query_list[2:]
+    agglist = kwlist[:5]
+    if not set(agglist).isdisjoint(set(uqlupper)):
+        if "SUM" in uqlupper:
+            aggcol = user_query_list[uqlupper.index("SUM") + 1]
+            aggcol = "sum_" + aggcol
+            cols_list.append(aggcol)
+        elif "TOTALNUM" in uqlupper:
+            aggcol = user_query_list[uqlupper.index("TOTALNUM") + 1]
+            aggcol = "totalnum_" + aggcol
+            cols_list.append(aggcol)
+        elif "MEAN" in uqlupper:
+            aggcol = user_query_list[uqlupper.index("MEAN") + 1]
+            aggcol = "mean_" + aggcol
+            cols_list.append(aggcol)
+        elif "MIN" in uqlupper:
+            aggcol = user_query_list[uqlupper.index("MIN") + 1]
+            aggcol = "min_" + aggcol
+            cols_list.append(aggcol)
+        elif "MAX" in uqlupper:
+            aggcol = user_query_list[uqlupper.index("MAX") + 1]
+            aggcol = "max_" + aggcol
+            cols_list.append(aggcol)
     return cols_list
 
 def agg_functions(user_query_list, table): 
@@ -78,7 +95,6 @@ def tblsum(user_query_list, table):
         return "failed"
     if "COLUMNS" in uqlupper:
         cols_list = get_columns(user_query_list)
-        print("cols: ", cols_list)
         if col.upper() not in list(map(str.upper, cols_list)):
             print("Column to aggregate must be selected in COLUMNS")   
             return 
@@ -87,15 +103,10 @@ def tblsum(user_query_list, table):
             if not os.path.exists(chunk_path + "/col_agg"):
                 os.mkdir(chunk_path + "/col_agg")
             for chunk in os.listdir(chunk_path):
-                print("current file: ", chunk)
                 if chunk.endswith(".csv"):
-                    print("found csv: ", chunk)
                     table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
-                    print("current table: \n", table)
                     sumseries = pd.Series(table[col].sum(), index=range(len(table[col])))
-                    print("sum series: ", sumseries)
                     table.insert(len(table.columns), "sum_"+col, sumseries)
-                    print("table after inserting sumseries: \n", table)
                     table.to_pickle(chunk_path + "/col_agg/" + chunk[:-4] + "_col_sum.pkl")
     else:
         chunk_path = "./" + user_query_list[0] + "_chunks"
@@ -251,31 +262,22 @@ def bunch_agg(user_query_list, table):
         chunk_path = "./" + user_query_list[0] + "_chunks"
         for chunk in os.listdir(chunk_path):
             if chunk.endswith(".csv"):
-               
                 table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
-            
                 groups = table[bunchcol].unique()
-                
                 tbldict = {group: table[table[bunchcol] == group] for group in groups}
-              
                 if "SUM" in list(map(str.upper, user_query_list)):
-                   # print("entered sum logic in bunch_agg")
                     agg_func = "sum"
                     sumcol = user_query_list[list(map(str.upper, user_query_list)).index("SUM") + 1]
-                    print("sumcol: ", sumcol)
                     if sumcol.upper() not in list(map(str.upper, cols_list)):
                             print("Column to aggregate must be selected in COLUMNS")
                             return
                     sumdict = {group: pd.Series(table.loc[table[bunchcol] == group, sumcol].sum(), index=range(len(table[bunchcol])), name='sum') for group in groups}
                     for key in tbldict.keys():
                         tbldict[key].insert(len(tbldict[key].columns), 'sum_'+sumcol, sumdict[key])
-                  
                     final_table = pd.concat([v for v in tbldict.values()], keys = [k for k in tbldict.keys()], names=[bunchcol + '_bunched', 'ROWID'])
-                   
+                    final_table.to_pickle(bunch_agg_chunk_path + "/" + chunk[:-4] + "bunch_" + agg_func + ".pkl")
                     return final_table
-                    #print("table after concatenation: \n", final_table.head(), "\n")
                 elif "TOTALNUM" in list(map(str.upper, user_query_list)):
-                    print("Table before doing TOTAL NUM",table)
                     agg_func = "totalnum"
                     totalcol = user_query_list[list(map(str.upper, user_query_list)).index("TOTALNUM") + 1]
                     if totalcol.upper() not in list(map(str.upper, cols_list)):
@@ -285,6 +287,8 @@ def bunch_agg(user_query_list, table):
                     for key in tbldict.keys():
                         tbldict[key].insert(len(tbldict[key].columns), 'totalnum_'+totalcol, totaldict[key])
                     table = pd.concat([v for v in tbldict.values()], keys = [k for k in tbldict.keys()], names=[bunchcol + '_bunched', 'ROWID'])
+                    table.to_pickle(bunch_agg_chunk_path + "/" + chunk[:-4] + "bunch_" + agg_func + ".pkl")
+                    return table
                 elif "MEAN" in list(map(str.upper, user_query_list)):
                     agg_func = "mean"
                     meancol = user_query_list[list(map(str.upper, user_query_list)).index("MEAN") + 1]
@@ -295,6 +299,8 @@ def bunch_agg(user_query_list, table):
                     for key in tbldict.keys():
                         tbldict[key].insert(len(tbldict[key].columns), 'mean_'+meancol, meandict[key])
                     table = pd.concat([v for v in tbldict.values()], keys = [k for k in tbldict.keys()], names=[bunchcol + '_bunched', 'ROWID'])
+                    table.to_pickle(bunch_agg_chunk_path + "/" + chunk[:-4] + "bunch_" + agg_func + ".pkl")
+                    return table
                 elif "MIN" in list(map(str.upper, user_query_list)):
                     agg_func = "min"
                     mincol = user_query_list[list(map(str.upper, user_query_list)).index("MIN") + 1]
@@ -305,6 +311,8 @@ def bunch_agg(user_query_list, table):
                     for key in tbldict.keys():
                         tbldict[key].insert(len(tbldict[key].columns), 'min_'+mincol, mindict[key])
                     table = pd.concat([v for v in tbldict.values()], keys = [k for k in tbldict.keys()], names=[bunchcol + '_bunched', 'ROWID'])
+                    table.to_pickle(bunch_agg_chunk_path + "/" + chunk[:-4] + "bunch_" + agg_func + ".pkl")
+                    return table
                 elif "MAX" in list(map(str.upper, user_query_list)):
                     agg_func = "max"
                     maxcol = user_query_list[list(map(str.upper, user_query_list)).index("MAX") + 1]
@@ -315,9 +323,8 @@ def bunch_agg(user_query_list, table):
                     for key in tbldict.keys():
                         tbldict[key].insert(len(tbldict[key].columns), 'max_'+maxcol, maxdict[key])
                     table = pd.concat([v for v in tbldict.values()], keys = [k for k in tbldict.keys()], names=[bunchcol + '_bunched', 'ROWID'])
-                table.to_pickle(bunch_agg_chunk_path + "/" + chunk[:-4] + "bunch_" + agg_func + ".pkl")
-        print("grouped successfully by", bunchcol, "; aggregate function is", agg_func)
-    
+                    table.to_pickle(bunch_agg_chunk_path + "/" + chunk[:-4] + "bunch_" + agg_func + ".pkl")
+                    return table
 
 def bunch(user_query_list, table):
     bunchidx = list(map(str.upper, user_query_list)).index("BUNCH") + 1
@@ -342,7 +349,6 @@ def bunch(user_query_list, table):
                 tbldict = {group: table[table[bunchcol] == group] for group in groups}
                 table = pd.concat([v for v in tbldict.values()], keys = [k for k in tbldict.keys()], names=[bunchcol + '_bunched', 'ROWID'])
                 table.to_pickle(bunched_chunk_path + "/" + chunk[:-4] + "_bunch.pkl")
-        print("grouped successfully by", bunchcol)
     return table
 
 def merge(user_query_list):
@@ -1024,19 +1030,18 @@ def simple_sort(sortcol, table):
     return sorted_table
 
 def sort_bunch(user_query_list, sortcol):
+    uqlupper = list(map(str.upper, user_query_list))
     agglist = ["TOTALNUM", "SUM", "MEAN", "MIN", "MAX"]
-    agg_present = not set(agglist).isdisjoint(set(list(map(str.upper, user_query_list))))
-    # Figure out bunching column
-    bunchcol = user_query_list[list(map(str.upper, user_query_list)).index("BUNCH") + 1] + "_bunched"
-    # Get file path of chunks
+    agg_present = not set(agglist).isdisjoint(set(uqlupper))
+    which_agg = tuple(set(agglist).intersection(set(uqlupper)))[0]
+    bunchcol = user_query_list[uqlupper.index("BUNCH") + 1] + "_bunched"
     if agg_present:
         file_path = os.path.join("./"+ user_query_list[0] + "_chunks", "bunch_agg_chunks")
     else:
         file_path = os.path.join("./"+ user_query_list[0] + "_chunks", "bunched_chunks")
-    # For each chunk, separate bunches into different tables
     sorted_chunk_directory = "./"+ user_query_list[0] + "_chunks/sorted_chunks"
     for chunk in os.listdir(file_path):
-        if os.path.isfile(file_path + "/" + chunk) and chunk[0] != ".":
+        if os.path.isfile(file_path + "/" + chunk) and chunk[0] != "." and chunk.endswith(which_agg.lower() + ".pkl"):
             table = pd.read_pickle(file_path + "/" + chunk)
             if bunchcol[:-8] == sortcol:
                 sorted_chunk = table.sort_index(level=0)
@@ -1061,7 +1066,7 @@ def sort_bunch(user_query_list, sortcol):
                 sorted_chunk = pd.read_csv(sorted_chunk_directory + "/" + filename, index_col=0)
                 dflist.append(sorted_chunk)
         else:
-            if "sorted_on_bunch" in filename:
+            if ("sorted_on_bunch" in filename) and (which_agg.lower() in filename):
                 sorted_chunk = pd.read_csv(sorted_chunk_directory + "/" + filename, index_col=0)
                 dflist.append(sorted_chunk)
     final_sorted_table = pd.concat(dflist, ignore_index=True)
@@ -1092,7 +1097,6 @@ def sort_merge(user_query_list, sortcol):
             newtbl2 = simple_sort(sortcol, newtbl2)
             newtbl2.to_csv(merged_directory2 + "/" + filename)
     df_list = []
-    #for left_chunk, right_chunk in zip(os.listdir(merged_directory1), os.listdir(merged_directory2)):
     for left_chunk in os.listdir(merged_directory1):
         for right_chunk in os.listdir(merged_directory2):
             if os.path.isfile(merged_directory1 + "/" + left_chunk) and os.path.isfile(merged_directory2 + "/" + right_chunk) and left_chunk[0] != "." and right_chunk[0] != ".":
@@ -1175,5 +1179,5 @@ def merge_asc(left, right, sortcol_index):
 if __name__ == "__main__": 
     print(os.getcwd())
     os.chdir("./test_db")
-    user_query_list = "test columns col1 col2 col3 sum col1 bunch col1".split()
+    user_query_list = "test columns col1 col2 col3 sum col1 bunch col3 sort col3 ASC".split()
     fetch(user_query_list)

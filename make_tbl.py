@@ -1,8 +1,5 @@
 import pandas as pd
-import numpy as np
 import os
-from printoutput import return_table
-
 
 # Datatypes to account for: int64, str, float64, datetime64
 global colnames

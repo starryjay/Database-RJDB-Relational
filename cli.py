@@ -1,10 +1,9 @@
 import cmd
-import pandas as pd
 import os
 from queryparse import parse_query
 
 class CLI(cmd.Cmd):
-    intro = """\nWelcome to Roma Jay Data Base (RJDB) :D\n\nMake sure to USEDB before you try MAKE, EDIT, FETCH, or DROP!\nType \'help\' or \'help [command]\' to learn more about the query language.\n"""
+    intro = """\nWelcome to Roma Jay Data Base (RJDB) :D\n\nMake sure to USEDB before you try MAKE, EDIT, FETCH, or DROP!\nType \'help\' or \'help [command]\' without quotes to learn more about the query language.\n"""
     prompt = 'RJDB > '
     
     def __init__(self, current_db=None):
@@ -130,6 +129,24 @@ class CLI(cmd.Cmd):
             elif user_input_query[0].upper() == "NOSQL":
                 print("Dropped non-relational DB", user_input_query[1])
 
+
+    def do_showdb(self, user_input_query):
+        """
+        Use this keyword at the beginning of a query to
+        show all databases in the DBMS.
+
+        Syntax: SHOWDB REL/NOSQL
+        """
+        if user_input_query[0].upper() == "REL":
+            os.chdir("..")
+            os.chdir("../DSCI-551-Final-Proj-Rel")
+        elif user_input_query[0].upper() == "NOSQL":
+            os.chdir("..")
+            os.chdir("../DSCI-551-Final-Proj-NoSQL")
+        for filename in os.listdir("."):
+            if os.path.isdir("./" + filename) and not filename.startswith("_") and not filename.startswith("."):
+                print(filename)
+
     def do_make(self, user_input_query):
         """
         Use this keyword at the beginning of a query
@@ -199,6 +216,14 @@ class CLI(cmd.Cmd):
         user_input_query = "DROP " + user_input_query
         return parse_query(user_input_query, self.current_db)
     
+    def do_show(self, user_input_query):
+        """
+        Use this keyword to show all tables in the current DB.
+        Make sure you're in a DB first, using USEDB. 
+        """
+        for filename in os.listdir("./table"):
+            print("       ", filename[:-4])
+
     def do_exit(self, *args):
         """
         Use this keyword by itself to exit the command line interface.

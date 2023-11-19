@@ -75,17 +75,21 @@ def insert_file(user_query_list, current_db):
     colnames = list(schema.columns)
     global dtypes
     dtypes = list(schema.dtypes)
-    filename = user_query_list[3]
-    df = clean_data(filename)
+    filepath = user_query_list[3]
+    filename = os.path.basename(filepath)
+    df = clean_data(user_query_list, filepath)
     load_data_to_file_system(df, current_db)
     chunk_path = "./" + user_query_list[0] + "_chunks"
     if os.path.exists(chunk_path): 
         first_chunk = os.listdir(chunk_path)[0] 
-        table = pd.read_csv(first_chunk)
+    else:
+        print("Chunk path not found!")
+        return
+    table = pd.read_csv(os.path.join(chunk_path, first_chunk))
     for colname, datatype in zip(colnames, dtypes):
         table[colname] = table[colname].astype(datatype)
     table.to_pickle("./table/" + user_query_list[0] + ".pkl")
-    print("Inserted file", df.name)
+    print("Inserted file", filename)
 
 def update(user_query_list):
     schema = pd.read_pickle("./table/" + user_query_list[0] + ".pkl")

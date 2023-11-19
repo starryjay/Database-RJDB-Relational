@@ -2,7 +2,6 @@ from make_tbl import make
 from edit_tbl import edit
 from fetch_tbl import fetch
 from drop_tbl import drop
-import os
 
 def parse_query(user_input_string, current_db):
     user_input_list = user_input_string.replace(',', '').split()

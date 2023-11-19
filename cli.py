@@ -177,11 +177,13 @@ class CLI(cmd.Cmd):
         Syntax for INSERT (one record at a time): 
             EDIT tablename INSERT col1=x, col2=y, col3=z...
         Syntax for INSERT (whole file): 
-            EDIT tablename INSERT FILE filename
+            EDIT tablename INSERT FILE filepath
         Syntax for UPDATE: 
             EDIT tablename UPDATE id=rownum, col3=abc, col5=xyz... 
         Syntax for DELETE: 
             EDIT tablename DELETE id=rownum...
+
+        When using INSERT FILE, do not wrap the filename in quotes.
         """
         user_input_query = "EDIT " + user_input_query
         return parse_query(user_input_query, self.current_db)

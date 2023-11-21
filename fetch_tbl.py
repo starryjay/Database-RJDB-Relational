@@ -91,7 +91,8 @@ def agg_functions(user_query_list, table):
 def tblsum(user_query_list, table):
     uqlupper = list(map(str.upper, user_query_list))
     col = user_query_list[uqlupper.index("SUM") + 1]
-    if (not isinstance((table[col].iloc[0]), int)) and (not isinstance((table[col].iloc[0]), float)):
+    if (not isinstance((table[col].iloc[0]), np.int64)) and (not isinstance((table[col].iloc[0]), np.float64)):
+        print(type(table[col].iloc[0]))
         print("Error: SUM can only be used on a numeric column.")
         return "failed"
     if "COLUMNS" in uqlupper:
@@ -103,11 +104,15 @@ def tblsum(user_query_list, table):
             chunk_path = "./" + user_query_list[0] + "_chunks"
             if not os.path.exists(chunk_path + "/col_agg"):
                 os.mkdir(chunk_path + "/col_agg")
+            total_sum = 0
             for chunk in os.listdir(chunk_path):
                 if chunk.endswith(".csv"):
                     table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
-                    sumseries = pd.Series(table[col].sum(), index=range(len(table[col])))
-                    table.insert(len(table.columns), "sum_"+col, sumseries)
+                    total_sum += table[col].sum()
+            for chunk in os.listdir(chunk_path):
+                if chunk.endswith(".csv"):
+                    table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                    table.insert(len(table.columns), "sum_"+col, total_sum)
                     table.to_pickle(chunk_path + "/col_agg/" + chunk[:-4] + "_col_sum.pkl")
     else:
         chunk_path = "./" + user_query_list[0] + "_chunks"
@@ -116,63 +121,73 @@ def tblsum(user_query_list, table):
         for chunk in os.listdir(chunk_path):
             if chunk.endswith(".csv"):
                 table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
-                sumseries = pd.Series(table[col].sum(), index=range(len(table[col])))
-                table.insert(len(table.columns), "sum_"+col, sumseries)
+                total_sum += table[col].sum()
+        for chunk in os.listdir(chunk_path):
+            if chunk.endswith(".csv"):
+                table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                table.insert(len(table.columns), "sum_"+col, total_sum)
                 table.to_pickle(chunk_path + "/agg/" + chunk[:-4] + "_sum.pkl")
     return table
 
 def totalnum(user_query_list, table):
-    col = user_query_list[list(map(str.upper, user_query_list)).index("TOTALNUM") + 1]
-    if (not isinstance((table[col].iloc[0]), int)) and (not isinstance((table[col].iloc[0]), float)):
-        print("Error: TOTALNUM can only be used on a numeric column.")
-        return "failed"
-    if "COLUMNS" in user_query_list:
+    uqlupper = list(map(str.upper, user_query_list))
+    col = user_query_list[uqlupper.index("TOTALNUM") + 1]
+    if "COLUMNS" in uqlupper:
         cols_list = get_columns(user_query_list)
         if col.upper() not in list(map(str.upper, cols_list)):
-            print("Column to aggregate must be selected in COLUMNS")  
-            return  
+            print("Column to aggregate must be selected in COLUMNS")   
+            return 
         else:
             chunk_path = "./" + user_query_list[0] + "_chunks"
-            if not os.path.exists("./" + user_query_list[0] + "_chunks/col_agg"):
-                os.mkdir("./" + user_query_list[0] + "_chunks/col_agg")
+            if not os.path.exists(chunk_path + "/col_agg"):
+                os.mkdir(chunk_path + "/col_agg")
+            count = 0
             for chunk in os.listdir(chunk_path):
                 if chunk.endswith(".csv"):
                     table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
-                    
-                    totalseries = pd.Series(len(table[col]), index=range(len(table[col])))
-                    table.insert(len(table.columns), "totalnum_"+col, totalseries)
+                    count += 1
+            for chunk in os.listdir(chunk_path):
+                if chunk.endswith(".csv"):
+                    table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                    table.insert(len(table.columns), "totalnum_"+col, count)
                     table.to_pickle(chunk_path + "/col_agg/" + chunk[:-4] + "_col_totalnum.pkl")
     else:
-        chunk_path = "./" + user_query_list[0] + "_chunks"
-        if not os.path.exists("./" + user_query_list[0] + "_chunks/agg"):
-            os.mkdir("./" + user_query_list[0] + "_chunks/agg")
         for chunk in os.listdir(chunk_path):
             if chunk.endswith(".csv"):
                 table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
-                totalseries = pd.Series(len(table[col]), index=range(len(table[col])))
-                table.insert(len(table.columns), "totalnum_"+col, totalseries)
+                count += 1
+        for chunk in os.listdir(chunk_path):
+            if chunk.endswith(".csv"):
+                table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                table.insert(len(table.columns), "totalnum_"+col, count)
                 table.to_pickle(chunk_path + "/agg/" + chunk[:-4] + "_totalnum.pkl")
     return table
 
 def mean(user_query_list, table):
-    col = user_query_list[list(map(str.upper, user_query_list)).index("MEAN") + 1]
+    uqlupper = list(map(str.upper, user_query_list))
+    col = user_query_list[uqlupper.index("MEAN") + 1]
     if (not isinstance((table[col].iloc[0]), int)) and (not isinstance((table[col].iloc[0]), float)):
         print("Error: MEAN can only be used on a numeric column.")
         return "failed"
-    if "COLUMNS" in user_query_list:
+    if "COLUMNS" in uqlupper:
         cols_list = get_columns(user_query_list)
         if col.upper() not in list(map(str.upper, cols_list)):
-            print("Column to aggregate must be selected in COLUMNS")
-            return    
+            print("Column to aggregate must be selected in COLUMNS")   
+            return 
         else:
             chunk_path = "./" + user_query_list[0] + "_chunks"
-            if not os.path.exists("./" + user_query_list[0] + "_chunks/col_agg"):
-                os.mkdir("./" + user_query_list[0] + "_chunks/col_agg")
+            if not os.path.exists(chunk_path + "/col_agg"):
+                os.mkdir(chunk_path + "/col_agg")
+            total_sum = 0
             for chunk in os.listdir(chunk_path):
                 if chunk.endswith(".csv"):
                     table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
-                    meanseries = pd.Series(table[col].mean(), index=range(len(table[col])))
-                    table.insert(len(table.columns), "mean_"+col, meanseries)
+                    total_sum += table[col].sum()
+            total_mean = total_sum/len(table)
+            for chunk in os.listdir(chunk_path):
+                if chunk.endswith(".csv"):
+                    table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                    table.insert(len(table.columns), "mean_"+col, total_mean)
                     table.to_pickle(chunk_path + "/col_agg/" + chunk[:-4] + "_col_mean.pkl")
     else:
         chunk_path = "./" + user_query_list[0] + "_chunks"
@@ -181,66 +196,92 @@ def mean(user_query_list, table):
         for chunk in os.listdir(chunk_path):
             if chunk.endswith(".csv"):
                 table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
-                meanseries = pd.Series(table[col].mean(), index=range(len(table[col])))
-                table.insert(len(table.columns), "mean_"+col, meanseries)
+                total_sum += table[col].sum()
+        total_mean = total_sum/len(table)
+        for chunk in os.listdir(chunk_path):
+            if chunk.endswith(".csv"):
+                table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                table.insert(len(table.columns), "mean_"+col, total_mean)
                 table.to_pickle(chunk_path + "/agg/" + chunk[:-4] + "_mean.pkl")
     return table
 
 def tblmin(user_query_list, table):
-    col = user_query_list[list(map(str.upper, user_query_list)).index("MIN") + 1]
-    if "COLUMNS" in user_query_list:
+    uqlupper = list(map(str.upper, user_query_list))
+    col = user_query_list[uqlupper.index("MIN") + 1]
+    if "COLUMNS" in uqlupper:
         cols_list = get_columns(user_query_list)
         if col.upper() not in list(map(str.upper, cols_list)):
-            print("Column to aggregate must be selected in COLUMNS")    
-            return
+            print("Column to aggregate must be selected in COLUMNS")   
+            return 
         else:
             chunk_path = "./" + user_query_list[0] + "_chunks"
-            if not os.path.exists("./" + user_query_list[0] + "_chunks/col_agg"):
-                os.mkdir("./" + user_query_list[0] + "_chunks/col_agg")
+            if not os.path.exists(chunk_path + "/col_agg"):
+                os.mkdir(chunk_path + "/col_agg")
+            min_val = float("inf")
             for chunk in os.listdir(chunk_path):
                 if chunk.endswith(".csv"):
                     table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
-                    minseries = pd.Series(table[col].min(), index=range(len(table[col])))
-                    table.insert(len(table.columns), "min_"+col, minseries)
+                    if table[col].min() < min_val:
+                        min_val = table[col].min()
+            for chunk in os.listdir(chunk_path):
+                if chunk.endswith(".csv"):
+                    table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                    table.insert(len(table.columns), "min_"+col, min_val)
                     table.to_pickle(chunk_path + "/col_agg/" + chunk[:-4] + "_col_min.pkl")
     else:
         chunk_path = "./" + user_query_list[0] + "_chunks"
         if not os.path.exists("./" + user_query_list[0] + "_chunks/agg"):
             os.mkdir("./" + user_query_list[0] + "_chunks/agg")
+        min_val = float("inf")
         for chunk in os.listdir(chunk_path):
             if chunk.endswith(".csv"):
                 table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
-                minseries = pd.Series(table[col].min(), index=range(len(table[col])))
-                table.insert(len(table.columns), "min_"+col, minseries)
+                if table[col].min() < min_val:
+                    min_val = table[col].min()
+        for chunk in os.listdir(chunk_path):
+            if chunk.endswith(".csv"):
+                table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                table.insert(len(table.columns), "min_"+col, min_val)
                 table.to_pickle(chunk_path + "/agg/" + chunk[:-4] + "_min.pkl")
     return table
 
 def tblmax(user_query_list, table):
-    col = user_query_list[list(map(str.upper, user_query_list)).index("MAX") + 1]
-    if "COLUMNS" in user_query_list:
+    uqlupper = list(map(str.upper, user_query_list))
+    col = user_query_list[uqlupper.index("MAX") + 1]
+    if "COLUMNS" in uqlupper:
         cols_list = get_columns(user_query_list)
         if col.upper() not in list(map(str.upper, cols_list)):
-            print("Column to aggregate must be selected in COLUMNS")    
-            return
+            print("Column to aggregate must be selected in COLUMNS")   
+            return 
         else:
             chunk_path = "./" + user_query_list[0] + "_chunks"
-            if not os.path.exists("./" + user_query_list[0] + "_chunks/col_agg"):
-                os.mkdir("./" + user_query_list[0] + "_chunks/col_agg")
+            if not os.path.exists(chunk_path + "/col_agg"):
+                os.mkdir(chunk_path + "/col_agg")
+            max_val = float("-inf")
             for chunk in os.listdir(chunk_path):
                 if chunk.endswith(".csv"):
                     table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
-                    maxseries = pd.Series(table[col].max(), index=range(len(table[col])))
-                    table.insert(len(table.columns), "max_"+col, maxseries)
+                    if table[col].max() > max_val:
+                        max_val = table[col].max()
+            for chunk in os.listdir(chunk_path):
+                if chunk.endswith(".csv"):
+                    table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                    table.insert(len(table.columns), "max_"+col, max_val)
                     table.to_pickle(chunk_path + "/col_agg/" + chunk[:-4] + "_col_max.pkl")
     else:
         chunk_path = "./" + user_query_list[0] + "_chunks"
         if not os.path.exists("./" + user_query_list[0] + "_chunks/agg"):
             os.mkdir("./" + user_query_list[0] + "_chunks/agg")
+        max_val = float("-inf")
         for chunk in os.listdir(chunk_path):
             if chunk.endswith(".csv"):
                 table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
-                maxseries = pd.Series(table[col].max(), index=range(len(table[col])))
-                table.insert(len(table.columns), "max_"+col, maxseries)
+                if table[col].max() > max_val:
+                    max_val = table[col].max()
+        for chunk in os.listdir(chunk_path):
+            if chunk.endswith(".csv"):
+                table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                table.insert(len(table.columns), "max_"+col, max_val)
                 table.to_pickle(chunk_path + "/agg/" + chunk[:-4] + "_max.pkl")
     return table
 
@@ -272,7 +313,7 @@ def bunch_agg(user_query_list, table):
                     if sumcol.upper() not in list(map(str.upper, cols_list)):
                             print("Column to aggregate must be selected in COLUMNS")
                             return
-                    sumdict = {group: pd.Series(table.loc[table[bunchcol] == group, sumcol].sum(), index=range(len(table[bunchcol])), name='sum') for group in groups}
+                    sumdict = {group: table.loc[table[bunchcol] == group, sumcol].sum() for group in groups}
                     for key in tbldict.keys():
                         tbldict[key].insert(len(tbldict[key].columns), 'sum_'+sumcol, sumdict[key])
                     final_table = pd.concat([v for v in tbldict.values()], keys = [k for k in tbldict.keys()], names=[bunchcol + '_bunched', 'ROWID'])
@@ -296,7 +337,7 @@ def bunch_agg(user_query_list, table):
                     if meancol.upper() not in list(map(str.upper, cols_list)):
                             print("Column to aggregate must be selected in COLUMNS")
                             return
-                    meandict = {group: pd.Series(table.loc[table[bunchcol] == group, meancol].mean(), index=range(len(table[bunchcol])), name='mean') for group in groups}
+                    meandict = {group: table.loc[table[bunchcol] == group, meancol].mean() for group in groups}
                     for key in tbldict.keys():
                         tbldict[key].insert(len(tbldict[key].columns), 'mean_'+meancol, meandict[key])
                     table = pd.concat([v for v in tbldict.values()], keys = [k for k in tbldict.keys()], names=[bunchcol + '_bunched', 'ROWID'])
@@ -308,7 +349,7 @@ def bunch_agg(user_query_list, table):
                     if mincol.upper() not in list(map(str.upper, cols_list)):
                             print("Column to aggregate must be selected in COLUMNS")
                             return
-                    mindict = {group: pd.Series(table.loc[table[bunchcol] == group, mincol].min(), index=range(len(table[bunchcol])), name='min') for group in groups}
+                    mindict = {group: table.loc[table[bunchcol] == group, mincol].min() for group in groups}
                     for key in tbldict.keys():
                         tbldict[key].insert(len(tbldict[key].columns), 'min_'+mincol, mindict[key])
                     table = pd.concat([v for v in tbldict.values()], keys = [k for k in tbldict.keys()], names=[bunchcol + '_bunched', 'ROWID'])
@@ -320,7 +361,7 @@ def bunch_agg(user_query_list, table):
                     if maxcol.upper() not in list(map(str.upper, cols_list)):
                             print("Column to aggregate must be selected in COLUMNS")
                             return
-                    maxdict = {group: pd.Series(table.loc[table[bunchcol] == group, maxcol].max(), index=range(len(table[bunchcol])), name='max') for group in groups}
+                    maxdict = {group: table.loc[table[bunchcol] == group, maxcol].max() for group in groups}
                     for key in tbldict.keys():
                         tbldict[key].insert(len(tbldict[key].columns), 'max_'+maxcol, maxdict[key])
                     table = pd.concat([v for v in tbldict.values()], keys = [k for k in tbldict.keys()], names=[bunchcol + '_bunched', 'ROWID'])
@@ -396,7 +437,9 @@ def sort(user_query_list):
         common_col = user_query_list[uqlupper.index("INCOMMON") + 1]
         sorted_df = sort_merge(user_query_list, common_col)
     elif "BUNCH" not in uqlupper and "MERGE" not in uqlupper:
+        user_query_list.insert(0, "FETCH")
         directory = find_directory(user_query_list)
+        user_query_list = user_query_list[1:]
         directory = sort_within_chunks(user_query_list, sortcol, directory)
         sorted_df = sort_between_chunks(user_query_list, sortcol, directory)
     if direction == "ASC":
@@ -535,16 +578,18 @@ def sort_within_chunks(user_query_list, sortcol, directory):
     tablename = user_query_list[0]
     uqlupper = list(map(str.upper, user_query_list))
     table = pd.DataFrame()
+    sorted_dir = "./" + tablename + "_chunks/sorted_chunks"
+    if not os.path.exists(sorted_dir):
+        os.mkdir(sorted_dir)
     for filename in os.listdir(directory):
-        if "MERGE" in uqlupper:
-            table = pd.read_csv(os.path.join(directory, filename), index_col=0)
-        else:
-            table = pd.read_pickle(os.path.join(directory, filename))
-        table = simple_sort(sortcol, table)
-        table.to_csv("./" + tablename + "_chunks/sorted_chunks/" + filename[:-4] + "_sorted.csv")
-    return "./" + tablename + "_chunks/sorted_chunks"
-
-
+        if os.path.isfile(directory + "/" + filename) and filename[0] != ".":
+            if filename.endswith(".csv"):
+                table = pd.read_csv(os.path.join(directory, filename), index_col=0)
+            else:
+                table = pd.read_pickle(os.path.join(directory, filename))
+            table = simple_sort(sortcol, table)
+            table.to_csv(sorted_dir + "/" + filename[:-4] + "_sorted.csv")
+    return sorted_dir
 
 def sort_between_chunks(user_query_list, sortcol, directory):
     tablename = user_query_list[0]
@@ -553,18 +598,21 @@ def sort_between_chunks(user_query_list, sortcol, directory):
     subset_count = 1
     for filename in os.listdir(directory):
         if os.path.isfile(directory + "/" + filename) and filename[0] != ".":
+            print(directory + "/" + filename)
             file_to_subset = pd.read_csv(directory + "/" + filename)
             for skiprownum in range(0, len(file_to_subset), 450):
                 file_subset = pd.read_csv(directory + "/" + filename, nrows=450, skiprows=skiprownum)
                 file_subset_name = f"{filename.split('.')[0]}_subset{subset_count}.pkl"
-                file_subset_path = "./"+ tablename + "_chunks/chunk_subsets/" + file_subset_name
+                file_subset_path = "./" + tablename + "_chunks/chunk_subsets/" + file_subset_name
                 file_subset.to_pickle(file_subset_path)
                 subset_count += 1
+                if len(file_subset) == 100:
+                    break
     subset_files = os.listdir("./"+ tablename + "_chunks/chunk_subsets")
     while len(subset_files) > 1:
         chunk1 = pd.read_pickle(os.path.join("./"+ tablename + "_chunks/chunk_subsets", subset_files.pop(0))) #get the first file 
         chunk2 = pd.read_pickle(os.path.join("./"+ tablename + "_chunks/chunk_subsets", subset_files.pop(0))) #second file 
-        pd.DataFrame(merge_asc(chunk1.values.tolist(), chunk2.values.tolist(), sortcol)).to_pickle(os.path.join("./"+ tablename + "_chunks/chunk_subsets", f"merged_subset_{len(subset_files) + 1 }.pkl"))
+        pd.DataFrame(merge_asc(chunk1.values.tolist(), chunk2.values.tolist(), user_query_list.index(sortcol))).to_pickle(os.path.join("./"+ tablename + "_chunks/chunk_subsets", f"merged_subset_{len(subset_files) + 1 }.pkl"))
         subset_files.append(f"merged_subset_{len(subset_files) + 1 }.pkl")
     final_merged_table = pd.read_pickle(os.path.join("./"+ tablename + "_chunks/chunk_subsets", subset_files[0]))
     return final_merged_table
@@ -584,6 +632,7 @@ def merge_asc(left, right, sortcol_index):
     j = 0 
     while i < len(left) and j < len(right):
         if left[i][sortcol_index] < right[j][sortcol_index]:
+
             sorted_table.append(left[i])
             i = i + 1 
         else: 
@@ -603,9 +652,11 @@ def has_logic(user_query_list, directory):
     full_condition = ""
     if condidx != len(uqlupper) - 1:
         conds = user_query_list[condidx:]
-    for c in conds:
-        full_condition += " "
-        full_condition += c
+        for c in conds:
+            full_condition += " "
+            full_condition += c
+    else:
+        full_condition = user_query_list[condidx]
     condition = full_condition.strip().replace("\"", "").replace("\'", "")
     for chunk in os.listdir("./" + user_query_list[0] + "_chunks/" + directory):
         if os.path.isfile("./" + user_query_list[0] + "_chunks/" + directory + "/" + chunk) and chunk[0] != ".":
@@ -688,3 +739,8 @@ def has_logic(user_query_list, directory):
             os.mkdir("./" + user_query_list[0] + "_chunks/" + directory + "/has_chunks")
         table.to_pickle("./" + user_query_list[0] + "_chunks/" + directory + "/has_chunks/" + user_query_list[0] + "_has.pkl")
         return table
+    
+if __name__ == "__main__":
+    os.chdir("/Users/shobhanashreedhar/DSCI-551-Final-Proj-Rel/test_db")
+    user_query_list = "real_estate columns bed bath house_size sum house_size".split()
+    fetch(user_query_list)

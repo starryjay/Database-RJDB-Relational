@@ -52,7 +52,7 @@ def find_directory(user_query_list):
                     filepath += sorted_tables
         if "HAS" in user_query_list:
             filepath += has_chunks      
-    return filepath
+        return filepath
 
 def return_table(user_query_list, agg_function = None):
     filepath = find_directory(user_query_list)

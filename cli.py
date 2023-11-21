@@ -208,16 +208,15 @@ class CLI(cmd.Cmd):
         filtering, sorting, or merging operations on specified columns.
 
         Relational:
-            Syntax: FETCH tablename [COLUMNS] [column(s)] [AGGREGATION FUNCTION] [column] [BUNCH/SORT/MERGE] [column] [HAS] [column(s)]
+            Syntax: FETCH tablename [COLUMNS] [column(s)] [AGGREGATION FUNCTION] [column] [BUNCH/SORT] [column] [MERGE] [tablename2] [INCOMMON] [mergingcol] [HAS] [column(s)]
 
         NoSQL:
-            Syntax: FETCH docname [NODES] [node(s)] [AGGREGATION FUNCTION] [node] [BUNCH/SORT/MERGE] [node] [HAS] [node(s)]
+            Syntax: FETCH docname [NODES] [node(s)] [AGGREGATION FUNCTION] [node] [BUNCH/SORT] [node] [MERGE] [docname2] [INCOMMON] [mergingnode] [HAS] [node(s)]
 
         * Brackets indicate optional query parameters.
         * Possible aggregation functions are TOTALNUM, SUM, MEAN, MIN, and MAX.
         * Keywords should specifically be in the order of 
           COLUMNS/NODES --> TOTALNUM/SUM/MEAN/MIN/MAX --> BUNCH --> SORT --> MERGE --> HAS
-
         """
         user_input_query = "FETCH " + user_input_query
         return parse_query(user_input_query, self.current_db)

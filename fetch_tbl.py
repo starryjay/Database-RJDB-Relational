@@ -424,7 +424,25 @@ def sort_bunch(user_query_list, sortcol):
         file_path = os.path.join("./"+ user_query_list[0] + "_chunks", "bunched_chunks")
     sorted_chunk_directory = "./"+ user_query_list[0] + "_chunks/sorted_chunks"
     for chunk in os.listdir(file_path):
-        if os.path.isfile(file_path + "/" + chunk) and chunk[0] != "." and chunk.endswith(which_agg.lower() + ".pkl"):
+        if os.path.isfile(file_path + "/" + chunk) and agg_present and chunk[0] != "." and chunk.endswith(which_agg.lower() + ".pkl"):
+            table = pd.read_pickle(file_path + "/" + chunk)
+            if bunchcol[:-8] == sortcol:
+                sorted_chunk = table.sort_index(level=0)
+                if not os.path.exists(sorted_chunk_directory):
+                    os.mkdir(sorted_chunk_directory)
+                sorted_chunk.to_csv(sorted_chunk_directory + "/" + chunk[:-4] + "_sorted_on_bunch.csv")
+            else:
+                indexes = table.index.get_level_values(0).unique().tolist()
+                tbl_num = 1
+                sortcol_index = table.columns.get_loc(sortcol)
+                for i in indexes:
+                    newtbl = table.loc[str(i), :]
+                    newtbl = merge_sort(newtbl.values.tolist(), sortcol_index)
+                    newtbl = pd.DataFrame(newtbl)
+                    newtbl.columns = table.columns
+                    newtbl.to_csv(sorted_chunk_directory + "/" + chunk[:-4] + "_sorted_level_" + str(tbl_num) + ".csv")
+                    tbl_num += 1
+        elif os.path.isfile(file_path + "/" + chunk) and not agg_present and chunk[0] != "." and chunk.endswith("_bunch.pkl"):
             table = pd.read_pickle(file_path + "/" + chunk)
             if bunchcol[:-8] == sortcol:
                 sorted_chunk = table.sort_index(level=0)
@@ -526,16 +544,22 @@ def sort_within_chunks(user_query_list, sortcol, directory):
         table.to_csv("./" + tablename + "_chunks/sorted_chunks/" + filename[:-4] + "_sorted.csv")
     return "./" + tablename + "_chunks/sorted_chunks"
 
+
+
 def sort_between_chunks(user_query_list, sortcol, directory):
     tablename = user_query_list[0]
-    if not os.path.exists("./"+ tablename + "_chunks/chunk_subsets"):
-        os.mkdir("./"+ tablename + "_chunks/chunk_subsets")
+    if not os.path.exists("./" + tablename + "_chunks/chunk_subsets"):
+        os.mkdir("./" + tablename + "_chunks/chunk_subsets")
+    subset_count = 1
     for filename in os.listdir(directory):
         if os.path.isfile(directory + "/" + filename) and filename[0] != ".":
-            file_subset = pd.read_csv(directory + "/" + filename, nrows = 450, index_col=0)
-            file_subset_name = f"{filename.split('.')[0]}_subset.pkl"
-            file_subset_path = os.path.join("./"+ tablename + "_chunks/chunk_subsets", file_subset_name)
-            file_subset.to_pickle(file_subset_path)
+            file_to_subset = pd.read_csv(directory + "/" + filename)
+            for skiprownum in range(0, len(file_to_subset), 450):
+                file_subset = pd.read_csv(directory + "/" + filename, nrows=450, skiprows=skiprownum)
+                file_subset_name = f"{filename.split('.')[0]}_subset{subset_count}.pkl"
+                file_subset_path = "./"+ tablename + "_chunks/chunk_subsets/" + file_subset_name
+                file_subset.to_pickle(file_subset_path)
+                subset_count += 1
     subset_files = os.listdir("./"+ tablename + "_chunks/chunk_subsets")
     while len(subset_files) > 1:
         chunk1 = pd.read_pickle(os.path.join("./"+ tablename + "_chunks/chunk_subsets", subset_files.pop(0))) #get the first file 

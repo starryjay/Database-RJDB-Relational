@@ -24,11 +24,14 @@ def make(user_query_list):
         colnames = [columnstuples[i][0] for i in range(len(columnstuples))]
         global dtypes 
         dtypes = [columnstuples[i][1].lower() for i in range(len(columnstuples))]
+        print("dtypes:", dtypes)
         global dtype_dict
         dtype_dict = {"int": 'int64', "str": 'string', "float": 'float64', "datetime64": 'datetime64[ns]'}
         tbl = pd.DataFrame(columns=colnames)
         for colname, datatype in zip(colnames, dtypes):
             tbl[colname] = tbl[colname].astype(dtype_dict[datatype])
+
+        print("table data types", tbl.dtypes)
         tbl.reset_index(drop = True, inplace = True)
         tbl.name = tablename
         if not os.path.exists("./table"):

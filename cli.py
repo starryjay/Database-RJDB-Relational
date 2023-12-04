@@ -116,9 +116,10 @@ class CLI(cmd.Cmd):
                 os.chdir("./DSCI-551-Final-Proj-NoSQL")
         else:
             if user_input_query[0].upper() == "REL":
+                os.chdir("..")
                 os.chdir("./DSCI-551-Final-Proj-Rel")
             elif user_input_query[0].upper() == "NOSQL":
-                print(os.getcwd())
+                os.chdir("..")
                 os.chdir("./DSCI-551-Final-Proj-NoSQL")
         if user_input_query[1] not in os.listdir('.'):
             print("DB does not exist!")
@@ -136,7 +137,8 @@ class CLI(cmd.Cmd):
     def do_showdb(self, user_input_query):
         """
         Use this keyword at the beginning of a query to
-        show all databases in the DBMS.
+        show all databases in the DBMS. Do this BEFORE using
+        the USEDB command.
 
         Syntax: SHOWDB REL/NOSQL
         """

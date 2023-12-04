@@ -29,6 +29,7 @@ def insert(user_query_list):
     colnames = list(schema.columns)
     global dtypes
     dtypes = list(schema.dtypes)
+    print("schema dtypes:", dtypes)
     record = pd.DataFrame(list(dict([tuple(data.split('=')) for data in user_query_list[2:]]).values())).T
     record.columns = colnames
     chunk_path = "./" + user_query_list[0] + "_chunks"

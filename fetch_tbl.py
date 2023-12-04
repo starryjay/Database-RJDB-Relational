@@ -22,25 +22,25 @@ def fetch(user_query_list):
     table = pd.read_pickle("./table/" + user_query_list[0] + ".pkl")
     agglist = ["TOTALNUM", "SUM", "MEAN", "MIN", "MAX"]
     uqlupper = list(map(str.upper, user_query_list))
+    if "MERGE" in uqlupper:
+        table = merge(user_query_list)
     if "BUNCH" in uqlupper and (not set(agglist).isdisjoint(set(uqlupper))):
         table = bunch_agg(user_query_list, table)
     elif "BUNCH" in uqlupper:
         table = bunch(user_query_list, table)
+    if "SORT" in uqlupper and "MERGE" not in uqlupper:
+        table = sort(user_query_list)
     elif (not set(agglist).isdisjoint(set(uqlupper))):
         table = agg_functions(user_query_list, table)
         if type(table) == str:
             return
-    if "SORT" in uqlupper:
-        table = sort(user_query_list)
-    elif "MERGE" in uqlupper:
-        table = merge(user_query_list)
     if "HAS" in uqlupper:
         table = has(user_query_list)
     if "COLUMNS" in uqlupper:
         table = table.loc[:, get_columns(user_query_list)]
     print(table)
 
-def get_columns(user_query_list):
+def get_columns(user_query_list): # Check to see if we're filtering columns correctly here
     uqlupper = list(map(str.upper, user_query_list))
     kwlist = ["TOTALNUM", "SUM", "MEAN", "MIN", "MAX", "BUNCH", "SORT", "MERGE", "HAS"]
     idxlist = {}
@@ -91,7 +91,7 @@ def agg_functions(user_query_list, table):
 def tblsum(user_query_list, table):
     uqlupper = list(map(str.upper, user_query_list))
     col = user_query_list[uqlupper.index("SUM") + 1]
-    if (not isinstance((table[col].iloc[0]), np.int64)) and (not isinstance((table[col].iloc[0]), np.float64)):
+    if (not isinstance((table[col].iloc[0]), np.int64)) and (not isinstance((table[col].iloc[0]), np.float64)) and (not isinstance(table[col].iloc[0], int)) and (not isinstance(table[col].iloc[0], float)):
         print(type(table[col].iloc[0]))
         print("Error: SUM can only be used on a numeric column.")
         return "failed"
@@ -102,29 +102,40 @@ def tblsum(user_query_list, table):
             return 
         else:
             chunk_path = "./" + user_query_list[0] + "_chunks"
+            if "MERGE" in uqlupper or "HAS" in uqlupper:
+                diruql = ("FETCH," + ",".join(user_query_list)).split(",")
+                directory = find_directory(diruql)
+            else:
+                directory = chunk_path
             if not os.path.exists(chunk_path + "/col_agg"):
                 os.mkdir(chunk_path + "/col_agg")
             total_sum = 0
-            for chunk in os.listdir(chunk_path):
+            for chunk in os.listdir(directory):
                 if chunk.endswith(".csv"):
-                    table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                    table = pd.read_csv(directory + "/" + chunk, index_col=0)
                     total_sum += table[col].sum()
-            for chunk in os.listdir(chunk_path):
+            for chunk in os.listdir(directory):
                 if chunk.endswith(".csv"):
-                    table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                    table = pd.read_csv(directory + "/" + chunk, index_col=0)
                     table.insert(len(table.columns), "sum_"+col, total_sum)
                     table.to_pickle(chunk_path + "/col_agg/" + chunk[:-4] + "_col_sum.pkl")
     else:
         chunk_path = "./" + user_query_list[0] + "_chunks"
+        if "MERGE" in uqlupper or "HAS" in uqlupper:
+            diruql = ("FETCH," + ",".join(user_query_list)).split(",")
+            directory = find_directory(diruql)
+        else:
+            directory = chunk_path
         if not os.path.exists("./" + user_query_list[0] + "_chunks/agg"):
             os.mkdir("./" + user_query_list[0] + "_chunks/agg")
-        for chunk in os.listdir(chunk_path):
+        total_sum = 0
+        for chunk in os.listdir(directory):
             if chunk.endswith(".csv"):
-                table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                table = pd.read_csv(directory + "/" + chunk, index_col=0)
                 total_sum += table[col].sum()
-        for chunk in os.listdir(chunk_path):
+        for chunk in os.listdir(directory):
             if chunk.endswith(".csv"):
-                table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                table = pd.read_csv(directory + "/" + chunk, index_col=0)
                 table.insert(len(table.columns), "sum_"+col, total_sum)
                 table.to_pickle(chunk_path + "/agg/" + chunk[:-4] + "_sum.pkl")
     return table
@@ -139,26 +150,40 @@ def totalnum(user_query_list, table):
             return 
         else:
             chunk_path = "./" + user_query_list[0] + "_chunks"
+            if "MERGE" in uqlupper or "HAS" in uqlupper:
+                diruql = ("FETCH," + ",".join(user_query_list)).split(",")
+                directory = find_directory(diruql)
+            else:
+                directory = chunk_path
             if not os.path.exists(chunk_path + "/col_agg"):
                 os.mkdir(chunk_path + "/col_agg")
             count = 0
-            for chunk in os.listdir(chunk_path):
+            for chunk in os.listdir(directory):
                 if chunk.endswith(".csv"):
-                    table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
-                    count += 1
-            for chunk in os.listdir(chunk_path):
+                    table = pd.read_csv(directory + "/" + chunk, index_col=0)
+                    count += len(table)
+            for chunk in os.listdir(directory):
                 if chunk.endswith(".csv"):
-                    table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                    table = pd.read_csv(directory + "/" + chunk, index_col=0)
                     table.insert(len(table.columns), "totalnum_"+col, count)
                     table.to_pickle(chunk_path + "/col_agg/" + chunk[:-4] + "_col_totalnum.pkl")
     else:
-        for chunk in os.listdir(chunk_path):
+        chunk_path = "./" + user_query_list[0] + "_chunks"
+        if "MERGE" in uqlupper or "HAS" in uqlupper:
+            diruql = ("FETCH," + ",".join(user_query_list)).split(",")
+            directory = find_directory(diruql)
+        else:
+            directory = chunk_path
+        if not os.path.exists("./" + user_query_list[0] + "_chunks/agg"):
+            os.mkdir("./" + user_query_list[0] + "_chunks/agg")
+        count = 0
+        for chunk in os.listdir(directory):
             if chunk.endswith(".csv"):
-                table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
-                count += 1
-        for chunk in os.listdir(chunk_path):
+                table = pd.read_csv(directory + "/" + chunk, index_col=0)
+                count += len(table)
+        for chunk in os.listdir(directory):
             if chunk.endswith(".csv"):
-                table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                table = pd.read_csv(directory + "/" + chunk, index_col=0)
                 table.insert(len(table.columns), "totalnum_"+col, count)
                 table.to_pickle(chunk_path + "/agg/" + chunk[:-4] + "_totalnum.pkl")
     return table
@@ -176,31 +201,42 @@ def mean(user_query_list, table):
             return 
         else:
             chunk_path = "./" + user_query_list[0] + "_chunks"
+            if "MERGE" in uqlupper or "HAS" in uqlupper:
+                diruql = ("FETCH," + ",".join(user_query_list)).split(",")
+                directory = find_directory(diruql)
+            else:
+                directory = chunk_path
             if not os.path.exists(chunk_path + "/col_agg"):
                 os.mkdir(chunk_path + "/col_agg")
             total_sum = 0
-            for chunk in os.listdir(chunk_path):
+            for chunk in os.listdir(directory):
                 if chunk.endswith(".csv"):
-                    table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                    table = pd.read_csv(directory + "/" + chunk, index_col=0)
                     total_sum += table[col].sum()
             total_mean = total_sum/len(table)
-            for chunk in os.listdir(chunk_path):
+            for chunk in os.listdir(directory):
                 if chunk.endswith(".csv"):
-                    table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                    table = pd.read_csv(directory + "/" + chunk, index_col=0)
                     table.insert(len(table.columns), "mean_"+col, total_mean)
                     table.to_pickle(chunk_path + "/col_agg/" + chunk[:-4] + "_col_mean.pkl")
     else:
         chunk_path = "./" + user_query_list[0] + "_chunks"
+        if "MERGE" in uqlupper or "HAS" in uqlupper:
+            diruql = ("FETCH," + ",".join(user_query_list)).split(",")
+            directory = find_directory(diruql)
+        else:
+            directory = chunk_path
         if not os.path.exists("./" + user_query_list[0] + "_chunks/agg"):
             os.mkdir("./" + user_query_list[0] + "_chunks/agg")
-        for chunk in os.listdir(chunk_path):
+        total_sum = 0
+        for chunk in os.listdir(directory):
             if chunk.endswith(".csv"):
-                table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                table = pd.read_csv(directory + "/" + chunk, index_col=0)
                 total_sum += table[col].sum()
         total_mean = total_sum/len(table)
-        for chunk in os.listdir(chunk_path):
+        for chunk in os.listdir(directory):
             if chunk.endswith(".csv"):
-                table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                table = pd.read_csv(directory + "/" + chunk, index_col=0)
                 table.insert(len(table.columns), "mean_"+col, total_mean)
                 table.to_pickle(chunk_path + "/agg/" + chunk[:-4] + "_mean.pkl")
     return table
@@ -215,32 +251,42 @@ def tblmin(user_query_list, table):
             return 
         else:
             chunk_path = "./" + user_query_list[0] + "_chunks"
+            if "MERGE" in uqlupper or "HAS" in uqlupper:
+                diruql = ("FETCH," + ",".join(user_query_list)).split(",")
+                directory = find_directory(diruql)
+            else:
+                directory = chunk_path
             if not os.path.exists(chunk_path + "/col_agg"):
                 os.mkdir(chunk_path + "/col_agg")
             min_val = float("inf")
-            for chunk in os.listdir(chunk_path):
+            for chunk in os.listdir(directory):
                 if chunk.endswith(".csv"):
                     table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
                     if table[col].min() < min_val:
                         min_val = table[col].min()
-            for chunk in os.listdir(chunk_path):
+            for chunk in os.listdir(directory):
                 if chunk.endswith(".csv"):
-                    table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                    table = pd.read_csv(directory + "/" + chunk, index_col=0)
                     table.insert(len(table.columns), "min_"+col, min_val)
                     table.to_pickle(chunk_path + "/col_agg/" + chunk[:-4] + "_col_min.pkl")
     else:
         chunk_path = "./" + user_query_list[0] + "_chunks"
+        if "MERGE" in uqlupper or "HAS" in uqlupper:
+            diruql = ("FETCH," + ",".join(user_query_list)).split(",")
+            directory = find_directory(diruql)
+        else:
+            directory = chunk_path
         if not os.path.exists("./" + user_query_list[0] + "_chunks/agg"):
             os.mkdir("./" + user_query_list[0] + "_chunks/agg")
         min_val = float("inf")
-        for chunk in os.listdir(chunk_path):
+        for chunk in os.listdir(directory):
             if chunk.endswith(".csv"):
                 table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
                 if table[col].min() < min_val:
                     min_val = table[col].min()
-        for chunk in os.listdir(chunk_path):
+        for chunk in os.listdir(directory):
             if chunk.endswith(".csv"):
-                table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                table = pd.read_csv(directory + "/" + chunk, index_col=0)
                 table.insert(len(table.columns), "min_"+col, min_val)
                 table.to_pickle(chunk_path + "/agg/" + chunk[:-4] + "_min.pkl")
     return table
@@ -255,32 +301,42 @@ def tblmax(user_query_list, table):
             return 
         else:
             chunk_path = "./" + user_query_list[0] + "_chunks"
+            if "MERGE" in uqlupper or "HAS" in uqlupper:
+                diruql = ("FETCH," + ",".join(user_query_list)).split(",")
+                directory = find_directory(diruql)
+            else:
+                directory = chunk_path
             if not os.path.exists(chunk_path + "/col_agg"):
                 os.mkdir(chunk_path + "/col_agg")
             max_val = float("-inf")
-            for chunk in os.listdir(chunk_path):
+            for chunk in os.listdir(directory):
                 if chunk.endswith(".csv"):
                     table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
-                    if table[col].max() > max_val:
+                    if table[col].min() > max_val:
                         max_val = table[col].max()
-            for chunk in os.listdir(chunk_path):
+            for chunk in os.listdir(directory):
                 if chunk.endswith(".csv"):
-                    table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                    table = pd.read_csv(directory + "/" + chunk, index_col=0)
                     table.insert(len(table.columns), "max_"+col, max_val)
                     table.to_pickle(chunk_path + "/col_agg/" + chunk[:-4] + "_col_max.pkl")
     else:
         chunk_path = "./" + user_query_list[0] + "_chunks"
+        if "MERGE" in uqlupper or "HAS" in uqlupper:
+            diruql = ("FETCH," + ",".join(user_query_list)).split(",")
+            directory = find_directory(diruql)
+        else:
+            directory = chunk_path
         if not os.path.exists("./" + user_query_list[0] + "_chunks/agg"):
             os.mkdir("./" + user_query_list[0] + "_chunks/agg")
         max_val = float("-inf")
-        for chunk in os.listdir(chunk_path):
+        for chunk in os.listdir(directory):
             if chunk.endswith(".csv"):
                 table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
-                if table[col].max() > max_val:
+                if table[col].min() > max_val:
                     max_val = table[col].max()
-        for chunk in os.listdir(chunk_path):
+        for chunk in os.listdir(directory):
             if chunk.endswith(".csv"):
-                table = pd.read_csv(chunk_path + "/" + chunk, index_col=0)
+                table = pd.read_csv(directory + "/" + chunk, index_col=0)
                 table.insert(len(table.columns), "max_"+col, max_val)
                 table.to_pickle(chunk_path + "/agg/" + chunk[:-4] + "_max.pkl")
     return table
@@ -421,6 +477,7 @@ def has(user_query_list):
     
 def sort(user_query_list):
     sorted_df = pd.DataFrame()
+    tablename = user_query_list[0]
     uqlupper = list(map(str.upper, user_query_list))
     sortcol = user_query_list[uqlupper.index("SORT") + 1]
     direction = None
@@ -437,15 +494,9 @@ def sort(user_query_list):
         common_col = user_query_list[uqlupper.index("INCOMMON") + 1]
         sorted_df = sort_merge(user_query_list, common_col)
     elif "BUNCH" not in uqlupper and "MERGE" not in uqlupper:
-        user_query_list.insert(0, "FETCH")
-        directory = find_directory(user_query_list)
-        user_query_list = user_query_list[1:]
-        directory = sort_within_chunks(user_query_list, sortcol, directory)
+        directory = sort_within_chunks(user_query_list, sortcol, "./" + tablename + "_chunks")
         sorted_df = sort_between_chunks(user_query_list, sortcol, directory)
-    if direction == "ASC":
-        return sorted_df
-    elif direction == "DESC":
-        return sorted_df.iloc[::-1]
+    return sorted_df
 
 def simple_sort(sortcol, table):
     table_list = table.values.tolist()
@@ -570,6 +621,12 @@ def sort_merge(user_query_list, sortcol):
                         left.replace(matchval, np.nan, inplace=True)
     final_merged_table = pd.concat(df_list)
     final_merged_table[sortcol] = final_merged_table[sortcol].astype(sortcol_type)
+    for fn in os.listdir(merged_directory1):
+        if os.path.isfile(merged_directory1 + "/" + fn):
+            os.remove(merged_directory1 + "/" + fn)
+    for fn in os.listdir(merged_directory2):
+        if os.path.isfile(merged_directory2 + "/" + fn):
+            os.remove(merged_directory2 + "/" + fn)
     final_merged_table.to_csv(merged_directory1 + "/" + tbl1 + "_merged.csv")
     final_merged_table.to_csv(merged_directory2 + "/" + tbl2 + "_merged.csv")
     return final_merged_table
@@ -577,6 +634,10 @@ def sort_merge(user_query_list, sortcol):
 def sort_within_chunks(user_query_list, sortcol, directory):
     tablename = user_query_list[0]
     uqlupper = list(map(str.upper, user_query_list))
+    if "ASC" in uqlupper:
+        asc = True
+    elif "DESC" in uqlupper:
+        asc = False
     table = pd.DataFrame()
     sorted_dir = "./" + tablename + "_chunks/sorted_chunks"
     if not os.path.exists(sorted_dir):
@@ -587,7 +648,7 @@ def sort_within_chunks(user_query_list, sortcol, directory):
                 table = pd.read_csv(os.path.join(directory, filename), index_col=0)
             else:
                 table = pd.read_pickle(os.path.join(directory, filename))
-            table = simple_sort(sortcol, table)
+            table.sort_values(sortcol, ascending=asc, inplace=True)
             table.to_csv(sorted_dir + "/" + filename[:-4] + "_sorted.csv")
     return sorted_dir
 
@@ -598,10 +659,14 @@ def sort_between_chunks(user_query_list, sortcol, directory):
     subset_count = 1
     for filename in os.listdir(directory):
         if os.path.isfile(directory + "/" + filename) and filename[0] != ".":
-            print(directory + "/" + filename)
-            file_to_subset = pd.read_csv(directory + "/" + filename)
+            file_to_subset = pd.read_csv(directory + "/" + filename, index_col=0)
+            sortcol_idx = file_to_subset.columns.get_loc(sortcol)
+            head = list(file_to_subset.columns)
             for skiprownum in range(0, len(file_to_subset), 450):
-                file_subset = pd.read_csv(directory + "/" + filename, nrows=450, skiprows=skiprownum)
+                if skiprownum == 0:
+                    file_subset = pd.read_csv(directory + "/" + filename, names=head, nrows=450, skiprows=1, index_col=0)
+                else:
+                    file_subset = pd.read_csv(directory + "/" + filename, names=head, nrows=450, skiprows=skiprownum, index_col=0)
                 file_subset_name = f"{filename.split('.')[0]}_subset{subset_count}.pkl"
                 file_subset_path = "./" + tablename + "_chunks/chunk_subsets/" + file_subset_name
                 file_subset.to_pickle(file_subset_path)
@@ -610,11 +675,18 @@ def sort_between_chunks(user_query_list, sortcol, directory):
                     break
     subset_files = os.listdir("./"+ tablename + "_chunks/chunk_subsets")
     while len(subset_files) > 1:
+        print('iterating through subsets to merge')
         chunk1 = pd.read_pickle(os.path.join("./"+ tablename + "_chunks/chunk_subsets", subset_files.pop(0))) #get the first file 
         chunk2 = pd.read_pickle(os.path.join("./"+ tablename + "_chunks/chunk_subsets", subset_files.pop(0))) #second file 
-        pd.DataFrame(merge_asc(chunk1.values.tolist(), chunk2.values.tolist(), user_query_list.index(sortcol))).to_pickle(os.path.join("./"+ tablename + "_chunks/chunk_subsets", f"merged_subset_{len(subset_files) + 1 }.pkl"))
+        for col in list(chunk1.columns):
+            chunk1[col] = chunk1[col].astype(pd.Series(chunk1.loc[1, col]).dtype)
+            chunk2[col] = chunk2[col].astype(pd.Series(chunk2.loc[1, col]).dtype)
+        pd.DataFrame(merge_asc(chunk1.values.tolist(), chunk2.values.tolist(), sortcol_idx)).to_pickle(os.path.join("./"+ tablename + "_chunks/chunk_subsets", f"merged_subset_{len(subset_files) + 1 }.pkl"))
         subset_files.append(f"merged_subset_{len(subset_files) + 1 }.pkl")
     final_merged_table = pd.read_pickle(os.path.join("./"+ tablename + "_chunks/chunk_subsets", subset_files[0]))
+    for fn in os.listdir("./"+ tablename + "_chunks/chunk_subsets"):
+        os.remove("./"+ tablename + "_chunks/chunk_subsets/" + fn)
+    final_merged_table.columns = head
     return final_merged_table
 
 def merge_sort(table_list, sortcol_index): 
@@ -632,7 +704,6 @@ def merge_asc(left, right, sortcol_index):
     j = 0 
     while i < len(left) and j < len(right):
         if left[i][sortcol_index] < right[j][sortcol_index]:
-
             sorted_table.append(left[i])
             i = i + 1 
         else: 
@@ -735,12 +806,9 @@ def has_logic(user_query_list, directory):
                             table = table.loc[table[col1] == cond2]
                 else:
                     table = table.loc[table[col1] == table[cond2]]
+        else:
+            continue
         if not os.path.exists("./" + user_query_list[0] + "_chunks/" + directory + "/has_chunks"):
             os.mkdir("./" + user_query_list[0] + "_chunks/" + directory + "/has_chunks")
         table.to_pickle("./" + user_query_list[0] + "_chunks/" + directory + "/has_chunks/" + user_query_list[0] + "_has.pkl")
         return table
-    
-if __name__ == "__main__":
-    os.chdir("/Users/shobhanashreedhar/DSCI-551-Final-Proj-Rel/test_db")
-    user_query_list = "real_estate columns bed bath house_size sum house_size".split()
-    fetch(user_query_list)

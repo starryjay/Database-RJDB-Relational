@@ -30,7 +30,8 @@ def fetch(user_query_list):
         table = bunch(user_query_list, table)
     if "SORT" in uqlupper and "MERGE" not in uqlupper:
         table = sort(user_query_list)
-    elif (not set(agglist).isdisjoint(set(uqlupper))):
+    if (not set(agglist).isdisjoint(set(uqlupper))):
+        print("entered agg")
         table = agg_functions(user_query_list, table)
         if type(table) == str:
             return
@@ -101,7 +102,7 @@ def tblsum(user_query_list, table):
             print("Column to aggregate must be selected in COLUMNS")   
             return 
         else:
-            chunk_path = "./" + user_query_list[0] + "_chunks"
+            chunk_path = "./" + user_query_list[0] + "_chunks"       # Need to find correct chunk path if "SORT" present
             if "MERGE" in uqlupper or "HAS" in uqlupper:
                 diruql = ("FETCH," + ",".join(user_query_list)).split(",")
                 directory = find_directory(diruql)
@@ -675,12 +676,11 @@ def sort_between_chunks(user_query_list, sortcol, directory):
                     break
     subset_files = os.listdir("./"+ tablename + "_chunks/chunk_subsets")
     while len(subset_files) > 1:
-        print('iterating through subsets to merge')
         chunk1 = pd.read_pickle(os.path.join("./"+ tablename + "_chunks/chunk_subsets", subset_files.pop(0))) #get the first file 
         chunk2 = pd.read_pickle(os.path.join("./"+ tablename + "_chunks/chunk_subsets", subset_files.pop(0))) #second file 
         for col in list(chunk1.columns):
-            chunk1[col] = chunk1[col].astype(pd.Series(chunk1.loc[1, col]).dtype)
-            chunk2[col] = chunk2[col].astype(pd.Series(chunk2.loc[1, col]).dtype)
+            chunk1[col] = chunk1[col].astype(pd.Series(chunk1.iloc[0, :].loc[col]).dtype)
+            chunk2[col] = chunk2[col].astype(pd.Series(chunk2.iloc[0, :].loc[col]).dtype)
         pd.DataFrame(merge_asc(chunk1.values.tolist(), chunk2.values.tolist(), sortcol_idx)).to_pickle(os.path.join("./"+ tablename + "_chunks/chunk_subsets", f"merged_subset_{len(subset_files) + 1 }.pkl"))
         subset_files.append(f"merged_subset_{len(subset_files) + 1 }.pkl")
     final_merged_table = pd.read_pickle(os.path.join("./"+ tablename + "_chunks/chunk_subsets", subset_files[0]))

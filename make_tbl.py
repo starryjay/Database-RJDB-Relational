@@ -30,10 +30,10 @@ def make(user_query_list):
         tbl = pd.DataFrame(columns=colnames)
         for colname, datatype in zip(colnames, dtypes):
             tbl[colname] = tbl[colname].astype(dtype_dict[datatype])
-
         print("table data types", tbl.dtypes)
         tbl.reset_index(drop = True, inplace = True)
         tbl.name = tablename
+        print("table name", tbl.name)
         if not os.path.exists("./table"):
             os.mkdir("./table")
         tbl.to_pickle("./table/" + tbl.name + '.pkl')

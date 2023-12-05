@@ -2,7 +2,8 @@ import pandas as pd
 import os 
 
 def clean_data(user_query_list, filepath):
-    re_data = pd.read_csv(filepath, index_col=0).dropna() 
+    re_data = pd.read_csv(filepath, index_col=0).dropna()
+    re_data.drop_duplicates(inplace=True) 
     re_data.name = user_query_list[0]
     return re_data
 

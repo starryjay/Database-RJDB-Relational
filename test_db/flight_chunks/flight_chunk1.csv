@@ -1,0 +1,8 @@
+,number,code,dest,day,airline,price
+0,UA111,SFO,PDX,Tuesday,United,145
+1,UA114,SFO,PDX,Wednesday,United,147
+2,AA645,DFW,SEA,Monday,American,147
+3,AA646,DFW,MCO,Monday,American,277
+4,SP345,EUG,PDX,Monday,Spirit,65
+5,SP459,SFO,LAX,Thursday,Spirit,74
+6,SP460,LAX,SFO,Thursday,Spirit,74

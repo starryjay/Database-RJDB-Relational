@@ -144,6 +144,7 @@ def delete(user_query_list):
         chunkno = 1
         chunk_path = "./" + user_query_list[0] + "_chunks/" + user_query_list[0] + "_chunk" + str(chunkno) + ".csv"
     table.drop(rownum, axis='index', inplace=True)
+    table.reset_index(inplace=True)
     if int(user_query_list[2][3:]) < 10000:
         table.to_pickle("./table/" + user_query_list[0] + ".pkl")
     table.to_csv(chunk_path)

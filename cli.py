@@ -167,7 +167,7 @@ class CLI(cmd.Cmd):
             Syntax for MAKE (new document): 
                 MAKE docname NODES node1=dtype1, node2=dtype2, node3=dtype3...
             Syntax for MAKE COPY (existing document):
-                MAKE COPY docname jsonname2
+                MAKE COPY docname1 docname2
 
         * Supported datatypes are int, float, and str.
         * Relational db also supports datetime64.
@@ -189,15 +189,16 @@ class CLI(cmd.Cmd):
             EDIT tablename INSERT/UPDATE/DELETE record
 
         Syntax for INSERT (one record at a time): 
-            EDIT tablename/docname INSERT col1/node1=x, col2/node2=y, col3/node3=z...
+            EDIT tablename/docname INSERT [nodename=newnode] col1/node1=x, col2/node2=y, col3/node3=z...
         Syntax for INSERT (whole file): 
             EDIT tablename/docname INSERT FILE filepath
         Syntax for UPDATE: 
-            EDIT tablename/docname UPDATE id=rownum, col3=abc, col5=xyz... 
+            EDIT tablename/docname UPDATE id=rownum/nodename=node, col3=abc, col5=xyz... 
         Syntax for DELETE: 
-            EDIT tablename/docname DELETE id=rownum...
+            EDIT tablename/docname DELETE id=rownum/nodename=node...
 
         * When using INSERT FILE, do not wrap the filepath in quotes.
+        * You must specify nodename when editing a non-relational document.
         """
         user_input_query = "EDIT " + user_input_query
         return parse_query(user_input_query, self.current_db)
